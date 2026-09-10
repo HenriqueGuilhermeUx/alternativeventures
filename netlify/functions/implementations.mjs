@@ -1,3 +1,4 @@
+import { verifySession } from './_auth.mjs';
 const ventures = [
  ['nexa','Nexa',['HenriqueGuilhermeUx/nexa-site','HenriqueGuilhermeUx/nexa-mobile','HenriqueGuilhermeUx/nexa-backend1']],
  ['ecotracker','EcoTracker',['HenriqueGuilhermeUx/ecotracker']],
@@ -24,12 +25,13 @@ async function commits(repo){
   return rows.map(x=>({repo,sha:x.sha?.slice(0,7),fullSha:x.sha,message:(x.commit?.message||'').split('\n')[0],date:x.commit?.committer?.date||x.commit?.author?.date,author:x.commit?.author?.name||x.author?.login||'',url:x.html_url}));
  }catch{return []}
 }
-export default async ()=>{
+export default async (req)=>{
+ const auth=req.headers.get('authorization')||''; const session=verifySession(auth.startsWith('Bearer ')?auth.slice(7).trim():''); if(!session) return new Response(JSON.stringify({error:'unauthorized'}),{status:401,headers:{'content-type':'application/json','cache-control':'no-store'}});
  const items=[];
  for(const [slug,venture,repos] of ventures){
    const batches=await Promise.all(repos.map(commits));
    for(const row of batches.flat()) items.push({...row,slug,venture});
  }
  items.sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
- return new Response(JSON.stringify({items:items.slice(0,80),checkedAt:new Date().toISOString()}),{headers:{'content-type':'application/json','cache-control':'public, max-age=120'}})
+ return new Response(JSON.stringify({items:items.slice(0,80),checkedAt:new Date().toISOString()}),{headers:{'content-type':'application/json','cache-control':'no-store'}})
 }
