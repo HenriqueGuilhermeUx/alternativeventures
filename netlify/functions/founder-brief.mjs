@@ -1,0 +1,10 @@
+import {configured,sb} from './_supabase.mjs';
+const high=['Nexa','EcoTracker','MindCompliance / NR1Check','Health Wallet','MyDataMed','MODO','MindSteps','TaxAgent'];
+const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+export default async ()=>{
+ let cash=[],deals=[],eventCount=0;
+ if(configured){const since=new Date(Date.now()-86400000).toISOString();const [a,b,c]=await Promise.all([sb('av_cash_events?select=*&limit=250'),sb('av_deals?select=*&limit=250'),sb(`av_events?select=id&occurred_at=gte.${encodeURIComponent(since)}`,{headers:{Prefer:'count=exact'}})]);cash=a.ok?await a.json():[];deals=b.ok?await b.json():[];eventCount=Number((c.headers.get('content-range')||'').split('/')[1]||0)}
+ const revenue=cash.filter(x=>x.kind==='revenue').reduce((s,x)=>s+Number(x.amount_brl||0),0);const costs=cash.filter(x=>x.kind==='cost').reduce((s,x)=>s+Number(x.amount_brl||0),0);const pipeline=deals.filter(x=>!['won','lost'].includes(x.stage)).reduce((s,x)=>s+Number(x.value_brl||0),0);
+ const lines=[`O AV OS acompanha 16 ventures. As prioridades altas atuais são: ${high.join(', ')}.`,cash.length?`Nas movimentações carregadas há ${brl(revenue)} de receita e ${brl(costs)} de custos.`:'A camada financeira ainda não recebeu dados reais. A prioridade é conectar Woovi, Mercado Pago, Google Play e custos de infraestrutura sem misturar caixa com pipeline.',deals.length?`O pipeline aberto soma ${brl(pipeline)} em oportunidades ainda não encerradas.`:'O Growth Desk ainda não possui deals persistidos. MODO Prospector / OpenOutreach é a primeira integração comercial recomendada.',eventCount?`Foram recebidos ${eventCount} eventos de telemetria nas últimas 24 horas.`:'Nenhuma telemetria foi recebida nas últimas 24 horas. O endpoint /api/events está pronto para as ventures prioritárias.','Sequência recomendada: observabilidade técnica → caixa → growth compartilhado → telemetria de produto → Founder AI contextual.'];
+ return new Response(JSON.stringify({brief:lines.join('\n\n')}),{headers:{'content-type':'application/json','cache-control':'no-store'}})
+}
