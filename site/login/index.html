@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="theme-color" content="#050816" />
+  <title>Alternative Ventures Office — Acesso</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#040713;--card:rgba(255,255,255,.055);--border:rgba(255,255,255,.12);--text:#f7f9ff;--muted:#8996b2;--cyan:#35d5ff;--blue:#4f8cff;--danger:#ff7999}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:Inter,system-ui,sans-serif;color:var(--text);background:radial-gradient(circle at 10% 0%,rgba(79,140,255,.28),transparent 32%),radial-gradient(circle at 95% 15%,rgba(53,213,255,.16),transparent 30%),linear-gradient(180deg,#040713,#02030a);display:grid;place-items:center;padding:24px}
+    body:before{content:'';position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:72px 72px;mask-image:linear-gradient(#000,transparent)}
+    .wrap{width:min(470px,100%);position:relative}.brand{display:flex;align-items:center;gap:14px;margin-bottom:22px}.mark{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;font-weight:800;background:linear-gradient(135deg,#fff,#84baff 55%,#35d5ff);color:#06101c;box-shadow:0 12px 34px rgba(79,140,255,.28)}
+    .brand strong{display:block;letter-spacing:.15em;text-transform:uppercase;font-size:.9rem}.brand span{display:block;color:var(--cyan);font:700 .67rem 'JetBrains Mono';letter-spacing:.2em;text-transform:uppercase;margin-top:3px}
+    .card{border:1px solid var(--border);border-radius:28px;background:linear-gradient(145deg,rgba(255,255,255,.085),rgba(255,255,255,.025));box-shadow:0 35px 90px rgba(0,0,0,.42);padding:34px}
+    .eyebrow{font:700 .69rem 'JetBrains Mono';letter-spacing:.13em;color:var(--cyan);text-transform:uppercase;margin:0 0 12px}.card h1{font-size:2.1rem;letter-spacing:-.055em;line-height:1;margin:0 0 12px}.sub{color:var(--muted);line-height:1.55;margin:0 0 28px;font-size:.94rem}
+    label{display:block;font-size:.78rem;font-weight:700;margin:0 0 8px;color:#d9e1f2}input{width:100%;height:50px;border-radius:14px;border:1px solid var(--border);background:rgba(3,7,18,.64);color:#fff;padding:0 14px;font:inherit;outline:none;margin-bottom:17px}input:focus{border-color:rgba(53,213,255,.65);box-shadow:0 0 0 3px rgba(53,213,255,.08)}
+    button{width:100%;height:50px;border:0;border-radius:14px;background:linear-gradient(90deg,#fff,#84baff,#35d5ff);font:800 .92rem Inter;color:#03101c;cursor:pointer;box-shadow:0 13px 35px rgba(79,140,255,.26)}button:disabled{opacity:.65;cursor:wait}.msg{min-height:22px;color:var(--danger);font-size:.82rem;margin-top:13px}.back{display:block;text-align:center;margin-top:18px;color:var(--muted);font-size:.82rem;text-decoration:none}.back:hover{color:#fff}.secure{margin-top:20px;padding-top:19px;border-top:1px solid rgba(255,255,255,.08);color:var(--muted);font-size:.75rem;line-height:1.5}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <a href="/" class="brand" style="color:inherit;text-decoration:none"><div class="mark">AV</div><div><strong>Alternative</strong><span>Ventures Office</span></div></a>
+    <section class="card">
+      <p class="eyebrow">Área privada</p>
+      <h1>Founder Command Center</h1>
+      <p class="sub">Acesso ao AV OS — operações, negócios, infraestrutura, implementação, financeiro, growth e memória operacional da Alternative Ventures.</p>
+      <form id="login-form">
+        <label for="email">E-mail autorizado</label>
+        <input id="email" type="email" autocomplete="username" required placeholder="seu@email.com" />
+        <label for="code">Código de acesso</label>
+        <input id="code" type="password" autocomplete="current-password" required placeholder="••••••••••••" />
+        <button id="submit" type="submit">Entrar no Office →</button>
+        <div id="msg" class="msg" role="status"></div>
+      </form>
+      <div class="secure">🔐 O código não fica salvo no site nem no GitHub. A validação acontece no servidor e a sessão expira automaticamente.</div>
+    </section>
+    <a class="back" href="/">← voltar ao site da Alternative Ventures</a>
+  </main>
+<script>
+  const form=document.getElementById('login-form');
+  const msg=document.getElementById('msg');
+  const submit=document.getElementById('submit');
+  const params=new URLSearchParams(location.search);
+  const requested=params.get('next')||'/office/';
+  const next=requested.startsWith('/') && !requested.startsWith('//') ? requested : '/office/';
+
+  const existing=localStorage.getItem('avos_session');
+  if(existing){
+    fetch('/api/session',{headers:{Authorization:'Bearer '+existing},cache:'no-store'}).then(r=>{if(r.ok)location.replace(next)}).catch(()=>{});
+  }
+
+  form.addEventListener('submit',async(e)=>{
+    e.preventDefault(); msg.textContent=''; submit.disabled=true; submit.textContent='Validando…';
+    try{
+      const res=await fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:document.getElementById('email').value,code:document.getElementById('code').value})});
+      const data=await res.json().catch(()=>({}));
+      if(!res.ok){
+        if(data.error==='auth_not_configured') throw new Error('O acesso privado ainda precisa ser configurado no Netlify.');
+        throw new Error('E-mail ou código inválido.');
+      }
+      localStorage.setItem('avos_session',data.token);
+      location.replace(next);
+    }catch(err){msg.textContent=err.message||'Não foi possível entrar.';submit.disabled=false;submit.textContent='Entrar no Office →';}
+  });
+</script>
+</body>
+</html>
