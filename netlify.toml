@@ -1,0 +1,54 @@
+[build]
+  publish = "site"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/login"
+  to = "/.netlify/functions/login"
+  status = 200
+
+[[redirects]]
+  from = "/api/session"
+  to = "/.netlify/functions/session"
+  status = 200
+
+[[redirects]]
+  from = "/api/tech-overview"
+  to = "/.netlify/functions/tech-overview"
+  status = 200
+
+[[redirects]]
+  from = "/api/implementations"
+  to = "/.netlify/functions/implementations"
+  status = 200
+
+[[redirects]]
+  from = "/api/snapshot"
+  to = "/.netlify/functions/snapshot"
+  status = 200
+
+[[redirects]]
+  from = "/api/events"
+  to = "/.netlify/functions/events"
+  status = 200
+
+[[redirects]]
+  from = "/api/founder-brief"
+  to = "/.netlify/functions/founder-brief"
+  status = 200
+
+[[headers]]
+  for = "/login/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "same-origin"
+
+[[headers]]
+  for = "/office/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+    Cache-Control = "no-store"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "same-origin"
