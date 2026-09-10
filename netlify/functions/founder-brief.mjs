@@ -1,7 +1,9 @@
+import { verifySession } from './_auth.mjs';
 import {configured,sb} from './_supabase.mjs';
 const high=['Nexa','EcoTracker','MindCompliance / NR1Check','Health Wallet','MyDataMed','MODO','MindSteps','TaxAgent'];
 const brl=n=>Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
-export default async ()=>{
+export default async (req)=>{
+ const auth=req.headers.get('authorization')||''; const session=verifySession(auth.startsWith('Bearer ')?auth.slice(7).trim():''); if(!session) return new Response(JSON.stringify({error:'unauthorized'}),{status:401,headers:{'content-type':'application/json','cache-control':'no-store'}});
  let cash=[],deals=[],eventCount=0;
  if(configured){const since=new Date(Date.now()-86400000).toISOString();const [a,b,c]=await Promise.all([sb('av_cash_events?select=*&limit=250'),sb('av_deals?select=*&limit=250'),sb(`av_events?select=id&occurred_at=gte.${encodeURIComponent(since)}`,{headers:{Prefer:'count=exact'}})]);cash=a.ok?await a.json():[];deals=b.ok?await b.json():[];eventCount=Number((c.headers.get('content-range')||'').split('/')[1]||0)}
  const revenue=cash.filter(x=>x.kind==='revenue').reduce((s,x)=>s+Number(x.amount_brl||0),0);const costs=cash.filter(x=>x.kind==='cost').reduce((s,x)=>s+Number(x.amount_brl||0),0);const pipeline=deals.filter(x=>!['won','lost'].includes(x.stage)).reduce((s,x)=>s+Number(x.value_brl||0),0);
