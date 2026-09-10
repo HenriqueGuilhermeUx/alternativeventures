@@ -1,6 +1,30 @@
 const CONTROL_KEY='avos_control_v02';
+const DEFAULTS_VERSION='2026-09-10-portfolio-accounts-v1';
 function clone(v){return JSON.parse(JSON.stringify(v))}
-function loadControl(){try{const x=JSON.parse(localStorage.getItem(CONTROL_KEY)||'null');return x&&typeof x==='object'?x:clone(window.AV_CONTROL_DEFAULTS)}catch{return clone(window.AV_CONTROL_DEFAULTS)}}
+function mergeDefaults(saved){
+  const base=clone(window.AV_CONTROL_DEFAULTS);
+  const source=saved&&typeof saved==='object'?saved:{};
+  for(const key of Object.keys(base)){
+    if(Array.isArray(base[key])){
+      const current=Array.isArray(source[key])?source[key]:[];
+      const defaultsById=new Map(base[key].filter(x=>x&&x.id).map(x=>[x.id,x]));
+      const merged=current.map(x=>x&&x.id&&defaultsById.has(x.id)?{...defaultsById.get(x.id),...x}:x);
+      const seen=new Set(merged.map(x=>x&&x.id).filter(Boolean));
+      base[key]=[...merged,...base[key].filter(x=>!x.id||!seen.has(x.id))];
+    }else if(source[key]!==undefined){base[key]=source[key]}
+  }
+  for(const [key,value] of Object.entries(source)){if(!(key in base))base[key]=value}
+  base._defaultsVersion=DEFAULTS_VERSION;
+  return base;
+}
+function loadControl(){
+  try{
+    const x=JSON.parse(localStorage.getItem(CONTROL_KEY)||'null');
+    if(!x||typeof x!=='object')return mergeDefaults(null);
+    if(x._defaultsVersion!==DEFAULTS_VERSION){const merged=mergeDefaults(x);localStorage.setItem(CONTROL_KEY,JSON.stringify(merged));return merged}
+    return x;
+  }catch{return mergeDefaults(null)}
+}
 function saveControl(d){localStorage.setItem(CONTROL_KEY,JSON.stringify(d));return d}
 function ventureName(slug){if(slug==='geral')return 'Alternative Ventures';return (P.find(v=>v.slug===slug)||{}).name||slug||'—'}
 function linkOrDash(url){if(!url)return '—';const safe=esc(url);return `<a href="${safe}" target="_blank" rel="noopener">abrir ↗</a>`}
@@ -9,7 +33,7 @@ function actionButtons(collection,id){return `<div class="row-actions"><button c
 function deleteRecord(collection,id){const d=loadControl();d[collection]=(d[collection]||[]).filter(x=>x.id!==id);saveControl(d);views[state.view]?.()}
 function downloadControl(){const a=document.createElement('a');const blob=new Blob([JSON.stringify(loadControl(),null,2)],{type:'application/json'});a.href=URL.createObjectURL(blob);a.download='alternative-ventures-inventario-'+new Date().toISOString().slice(0,10)+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 function triggerImport(){document.getElementById('control-import')?.click()}
-async function handleImport(file){if(!file)return;try{const d=JSON.parse(await file.text());if(!d||typeof d!=='object')throw 0;saveControl({...clone(window.AV_CONTROL_DEFAULTS),...d});renderControl()}catch{alert('Inventário inválido.')}}
+async function handleImport(file){if(!file)return;try{const d=JSON.parse(await file.text());if(!d||typeof d!=='object')throw 0;saveControl(mergeDefaults(d));renderControl()}catch{alert('Inventário inválido.')}}
 const LABELS={provider:'Provedor',venture:'Venture',accountEmail:'E-mail / login',workspace:'Workspace / organização',project:'Projeto',projectRef:'Project Ref / ID',consoleUrl:'Link do console',status:'Status',notes:'Notas',domain:'Domínio',registrar:'Registrador',dnsProvider:'DNS provider',target:'Destino',renewalDate:'Renovação',autoRenew:'Auto-renovação',annualCost:'Custo anual',name:'Nome',environment:'Ambiente',url:'URL',accountId:'Conta vinculada',plan:'Plano',monthlyCost:'Custo mensal',billingEmail:'E-mail de cobrança',storedIn:'Guardado em',itemReference:'Referência no cofre',title:'Título',date:'Data',link:'Link',priority:'Prioridade',dueDate:'Prazo',nextAction:'Próxima ação',rationale:'Motivo / racional',impact:'Impacto'};
 const TEMPLATES={accounts:{provider:'',venture:'geral',accountEmail:'',workspace:'',project:'',projectRef:'',consoleUrl:'',status:'mapear',notes:''},domains:{domain:'',venture:'geral',registrar:'',accountEmail:'',dnsProvider:'',target:'',renewalDate:'',autoRenew:'',annualCost:'',status:'ativo',notes:''},services:{provider:'',venture:'geral',name:'',environment:'production',url:'',accountId:'',plan:'',monthlyCost:'',billingEmail:'',status:'ativo',notes:''},secretRefs:{name:'',venture:'geral',provider:'',storedIn:'',itemReference:'',notes:''},manualImplementations:{venture:'geral',title:'',date:new Date().toISOString().slice(0,10),status:'concluído',link:'',notes:''},tasks:{venture:'geral',title:'',priority:'media',status:'todo',dueDate:'',nextAction:''},decisions:{venture:'geral',title:'',date:new Date().toISOString().slice(0,10),rationale:'',impact:''}};
 function fieldHtml(key,value){const label=LABELS[key]||key;const full=['notes','nextAction','rationale','impact'].includes(key);if(key==='venture'){const opts=[['geral','Alternative Ventures'],...P.map(v=>[v.slug,v.name])];return `<label>${label}<select class="input" name="${key}">${opts.map(([s,n])=>`<option value="${esc(s)}" ${s===value?'selected':''}>${esc(n)}</option>`).join('')}</select></label>`}if(key==='status'&&['todo','doing','blocked','done'].includes(String(value))){return `<label>${label}<select class="input" name="status">${[['todo','A fazer'],['doing','Em andamento'],['blocked','Bloqueado'],['done','Concluído']].map(([s,n])=>`<option value="${s}" ${s===value?'selected':''}>${n}</option>`).join('')}</select></label>`}if(key==='priority'){return `<label>${label}<select class="input" name="priority">${['alta','media','baixa'].map(s=>`<option value="${s}" ${s===value?'selected':''}>${s}</option>`).join('')}</select></label>`}if(full)return `<label class="full">${label}<textarea class="input" name="${key}">${esc(value||'')}</textarea></label>`;const type=/Date$|^date$/.test(key)?'date':key.toLowerCase().includes('email')?'email':'text';return `<label>${label}<input class="input" type="${type}" name="${key}" value="${esc(value||'')}"></label>`}
