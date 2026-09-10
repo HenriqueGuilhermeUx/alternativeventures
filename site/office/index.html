@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>AV OS — Founder Command Center</title>
+  <meta name="description" content="Alternative Ventures Operating System"/>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>html:not(.avos-authenticated) body{visibility:hidden}</style>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark">AV</div><div><strong>AV OS</strong><small>Founder Command Center</small></div></div>
+      <nav id="main-nav">
+        <button data-view="overview" class="active">◈ <span>Visão geral</span></button>
+        <button data-view="ventures">▦ <span>Ventures</span></button>
+        <button data-view="control">⌂ <span>Central de Controle</span></button>
+        <button data-view="implementations">⇄ <span>Implementações</span></button>
+        <button data-view="roadmap">✓ <span>Roadmap</span></button>
+        <button data-view="technology">◉ <span>Tecnologia</span></button>
+        <button data-view="finance">◫ <span>Financeiro</span></button>
+        <button data-view="growth">↗ <span>Growth Desk</span></button>
+        <button data-view="contracts">▤ <span>Contratos</span></button>
+        <button data-view="founder">✦ <span>Founder AI</span></button>
+        <button data-view="connectors">⚙ <span>Conectores</span></button>
+      </nav>
+      <div class="side-footer"><b>Alternative Ventures</b><small>Control plane interno</small></div>
+    </aside>
+    <main>
+      <header class="topbar">
+        <div><p class="eyebrow">ALTERNATIVE VENTURES</p><h1 id="view-title">Founder Command Center</h1><p id="view-subtitle">Uma visão única de produto, receita, distribuição e tecnologia para todo o portfólio.</p></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div class="secure-pill">● Dados agregados · control plane</div><button class="logout-btn" type="button" onclick="avosLogout()">Sair</button></div>
+      </header>
+      <div id="view-root"></div>
+    </main>
+  </div>
+  <div id="modal-root"></div>
+  <script src="auth-guard.js"></script>
+  <script src="portfolio.js"></script>
+  <script src="control-data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
