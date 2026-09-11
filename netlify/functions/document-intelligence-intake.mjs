@@ -47,6 +47,24 @@ function normalizeConsumerType(payload) {
   return { payload, trustedRequestedType: null };
 }
 
+function telemetrySafeResult(result) {
+  if (!result || typeof result !== 'object') return result;
+  return {
+    documentType: result.documentType || null,
+    confidence: result.confidence ?? null,
+    dates: Array.from({ length: result.dates?.length || 0 }),
+    parties: Array.from({ length: result.parties?.length || 0 }),
+    amounts: Array.from({ length: result.amounts?.length || 0 }),
+    items: Array.from({ length: result.items?.length || 0 }),
+    obligations: Array.from({ length: result.obligations?.length || 0 }),
+    source: {
+      pages: result.source?.pages || 1,
+      hash: result.source?.hash || null,
+      filename: null,
+    },
+  };
+}
+
 export default async (req) => {
   if (req.method === 'GET') {
     if (!authorize(req).ok) return unauthorized();
@@ -77,7 +95,7 @@ export default async (req) => {
       jobId,
       consumer: out.consumer,
       provider,
-      result: out.result,
+      result: telemetrySafeResult(out.result),
       processingMs: out.processingMs,
       status: 'completed',
     });
