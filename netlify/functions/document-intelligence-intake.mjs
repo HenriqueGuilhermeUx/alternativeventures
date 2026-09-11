@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { authorize, unauthorized, response, persistJob } from './_document-intelligence.mjs';
+import { authorize, unauthorized, response, persistJob, validateDocument } from './_document-intelligence.mjs';
 import { runDocumentIntake, intakeCatalog } from './_document-intake.mjs';
 
 function field(form, name, fallback = '') {
@@ -35,6 +35,18 @@ async function payloadFromRequest(req) {
   return { consumer: 'nexjud', documentType: 'auto', text };
 }
 
+function normalizeConsumerType(payload) {
+  const requestedType = String(payload?.documentType || 'auto');
+  // SindCopilot already knows some domain-specific types from the user's upload choice.
+  // The legacy shared extractor catalog was intentionally narrower, so use auto at the
+  // structuring boundary and restore the trusted domain label after extraction.
+  const sindDomainTypes = new Set(['fiscal_document', 'purchase_order', 'legal_document']);
+  if (payload?.consumer === 'sindcopilot' && sindDomainTypes.has(requestedType)) {
+    return { payload: { ...payload, documentType: 'auto' }, trustedRequestedType: requestedType };
+  }
+  return { payload, trustedRequestedType: null };
+}
+
 export default async (req) => {
   if (req.method === 'GET') {
     if (!authorize(req).ok) return unauthorized();
@@ -46,8 +58,20 @@ export default async (req) => {
   const jobId = crypto.randomUUID();
   const start = Date.now();
   try {
-    const payload = await payloadFromRequest(req);
-    const out = await runDocumentIntake(payload || {});
+    const incoming = await payloadFromRequest(req);
+    const normalized = normalizeConsumerType(incoming || {});
+    const out = await runDocumentIntake(normalized.payload || {});
+
+    if (normalized.trustedRequestedType && out.result) {
+      out.result.documentType = normalized.trustedRequestedType;
+      out.result.metadata = {
+        ...(out.result.metadata || {}),
+        consumerRequestedDocumentType: normalized.trustedRequestedType,
+        documentTypeSource: 'consumer_domain_label',
+      };
+      out.validation = validateDocument(out.result);
+    }
+
     const provider = `${out.intakeProvider}->${out.structuringProvider}`;
     const persisted = await persistJob({
       jobId,
