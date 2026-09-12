@@ -8,12 +8,18 @@ export default async (req)=>{
   let body; try{body=await req.json()}catch{return json({error:'invalid_json'},400)}
   if(!body?.id) return json({error:'missing_id'},400);
   if(body.stage!==undefined&&!stages.has(body.stage)) return json({error:'invalid_stage'},400);
+  if(!configured) return json({updated:false,reason:'supabase_not_configured'},503);
   const patch={updated_at:new Date().toISOString()};
   if(body.stage!==undefined) patch.stage=body.stage;
   if(Object.hasOwn(body,'nextAction')) patch.next_action=body.nextAction||null;
   if(Object.hasOwn(body,'owner')) patch.owner=body.owner||null;
+  if(body.metadataPatch&&typeof body.metadataPatch==='object'&&!Array.isArray(body.metadataPatch)){
+    const currentR=await sb(`av_deals?id=eq.${encodeURIComponent(body.id)}&select=metadata&limit=1`);
+    if(!currentR.ok) return json({error:'supabase_error',details:await currentR.text()},500);
+    const current=await currentR.json(); if(!current.length) return json({error:'lead_not_found'},404);
+    patch.metadata={...(current[0].metadata||{}),...body.metadataPatch};
+  }
   if(Object.keys(patch).length===1) return json({error:'no_changes'},400);
-  if(!configured) return json({updated:false,reason:'supabase_not_configured'},503);
   const r=await sb(`av_deals?id=eq.${encodeURIComponent(body.id)}`,{method:'PATCH',body:JSON.stringify(patch)}); if(!r.ok) return json({error:'supabase_error',details:await r.text()},500);
   const rows=await r.json().catch(()=>[]); if(!rows.length) return json({error:'lead_not_found'},404);
   return json({updated:true,deal:rows[0]});
