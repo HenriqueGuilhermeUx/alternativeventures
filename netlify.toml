@@ -33,6 +33,21 @@
   status = 200
 
 [[redirects]]
+  from = "/api/leads-ingest"
+  to = "/.netlify/functions/leads-ingest"
+  status = 200
+
+[[redirects]]
+  from = "/api/leads"
+  to = "/.netlify/functions/leads"
+  status = 200
+
+[[redirects]]
+  from = "/api/leads-update"
+  to = "/.netlify/functions/leads-update"
+  status = 200
+
+[[redirects]]
   from = "/api/founder-brief"
   to = "/.netlify/functions/founder-brief"
   status = 200
