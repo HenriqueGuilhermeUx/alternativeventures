@@ -5,7 +5,7 @@ const subtitle = document.getElementById('view-subtitle');
 const nav = document.getElementById('main-nav');
 const modalRoot = document.getElementById('modal-root');
 
-const state = { snapshot:null, tech:null, view:'overview' };
+const state = { snapshot:null, tech:null, leads:null, leadsFilter:'all', view:'overview' };
 function apiFetch(url, options = {}){
   const token = localStorage.getItem('avos_session') || '';
   const headers = {...(options.headers||{}), Authorization: 'Bearer '+token};
@@ -18,7 +18,11 @@ const status = s => `<span class="status ${s||'unknown'}">${s==='healthy'?'Opera
 const kpi = (label,value,detail='') => `<div class="kpi"><div class="kpi-head"><span>${label}</span><span>◦</span></div><strong>${value}</strong><small>${detail}</small></div>`;
 
 function setHeader(t,s){title.textContent=t;subtitle.textContent=s}
-function ventureCard(v){return `<article class="venture-card" data-venture="${v.slug}" style="--accent:${v.accent}"><div class="venture-top"><span class="venture-icon">${esc(v.name.slice(0,2).toUpperCase())}</span><span class="priority ${v.priority}">${v.priority}</span></div><h3>${esc(v.name)}</h3><p>${esc(v.category)}</p><div class="venture-thesis">${esc(v.thesis)}</div><div class="tags">${v.cash.slice(0,3).map(x=>`<span>${esc(x)}</span>`).join('')}</div></article>`}
+function ventureLeadCount(slug){return Array.isArray(state.leads)?state.leads.filter(d=>d.venture_slug===slug&&!['won','lost'].includes(d.stage)).length:null}
+function ventureCard(v){
+  const leads=ventureLeadCount(v.slug);
+  return `<article class="venture-card" data-venture="${v.slug}" style="--accent:${v.accent}"><div class="venture-top"><span class="venture-icon">${esc(v.name.slice(0,2).toUpperCase())}</span><span class="priority ${v.priority}">${v.priority}</span></div><h3>${esc(v.name)}</h3><p>${esc(v.category)}</p><div class="venture-thesis">${esc(v.thesis)}</div><div class="tags">${v.cash.slice(0,3).map(x=>`<span>${esc(x)}</span>`).join('')}</div><div class="venture-actions"><span class="venture-leads-count">${leads==null?'Pipeline':`${leads} ${leads===1?'lead':'leads'} aberto${leads===1?'':'s'}`}</span><button class="btn venture-leads-btn" data-venture-leads="${esc(v.slug)}" type="button">Leads →</button></div></article>`
+}
 
 async function fetchSnapshot(){
   if(state.snapshot) return state.snapshot;
@@ -26,18 +30,29 @@ async function fetchSnapshot(){
   return state.snapshot;
 }
 
-function bindVentureCards(){document.querySelectorAll('[data-venture]').forEach(el=>el.addEventListener('click',()=>openVenture(el.dataset.venture)))}
+function bindVentureCards(){
+  document.querySelectorAll('[data-venture]').forEach(el=>el.addEventListener('click',e=>{
+    const leads=e.target.closest('[data-venture-leads]');
+    if(leads){e.preventDefault();e.stopPropagation();openVentureLeads(leads.dataset.ventureLeads);return}
+    openVenture(el.dataset.venture)
+  }))
+}
 function openVenture(slug){
   const v=P.find(x=>x.slug===slug); if(!v)return;
   const tech=(state.tech?.items||[]).find(x=>x.slug===slug);
-  modalRoot.innerHTML=`<div class="modal-backdrop" id="modal-bg"><div class="modal"><div class="modal-head"><div><p class="eyebrow">${esc(v.category)}</p><h2>${esc(v.name)}</h2><p class="muted">${esc(v.thesis)}</p></div><button class="close" id="modal-close">×</button></div><div class="detail-grid"><section class="panel"><div class="section-head" style="margin-top:0"><h2>Motores de caixa</h2><p>hipóteses comerciais</p></div><div class="tags">${v.cash.map(x=>`<span>${esc(x)}</span>`).join('')}</div><div class="section-head"><h2>Repositórios</h2><p>GitHub</p></div><div class="repo-list list">${v.repos.length?v.repos.map(r=>`<div class="list-item"><b>${esc(r)}</b><a target="_blank" href="https://github.com/${esc(r)}">abrir ↗</a></div>`).join(''):'<div class="empty">Repositório ainda não mapeado.</div>'}</div></section><aside class="panel"><div class="list"><div class="list-item"><b>Prioridade</b><span>${v.priority.toUpperCase()}</span></div><div class="list-item"><b>Estágio</b><span>${v.stage}</span></div><div class="list-item"><b>Saúde</b>${tech?status(tech.health):status('unknown')}</div><div class="list-item"><b>Latência</b><span>${tech?.latencyMs?tech.latencyMs+' ms':'—'}</span></div></div>${v.web?`<div class="section-head"><h2>Produto</h2></div><a class="btn primary" href="${v.web}" target="_blank">Abrir produto ↗</a>`:''}</aside></div></div></div>`;
-  document.getElementById('modal-close').onclick=closeModal;document.getElementById('modal-bg').addEventListener('click',e=>{if(e.target.id==='modal-bg')closeModal()});
+  const leads=ventureLeadCount(slug);
+  modalRoot.innerHTML=`<div class="modal-backdrop" id="modal-bg"><div class="modal"><div class="modal-head"><div><p class="eyebrow">${esc(v.category)}</p><h2>${esc(v.name)}</h2><p class="muted">${esc(v.thesis)}</p></div><button class="close" id="modal-close">×</button></div><div class="detail-grid"><section class="panel"><div class="section-head" style="margin-top:0"><h2>Motores de caixa</h2><p>hipóteses comerciais</p></div><div class="tags">${v.cash.map(x=>`<span>${esc(x)}</span>`).join('')}</div><div class="section-head"><h2>Repositórios</h2><p>GitHub</p></div><div class="repo-list list">${v.repos.length?v.repos.map(r=>`<div class="list-item"><b>${esc(r)}</b><a target="_blank" href="https://github.com/${esc(r)}">abrir ↗</a></div>`).join(''):'<div class="empty">Repositório ainda não mapeado.</div>'}</div></section><aside class="panel"><div class="list"><div class="list-item"><b>Prioridade</b><span>${v.priority.toUpperCase()}</span></div><div class="list-item"><b>Estágio</b><span>${v.stage}</span></div><div class="list-item"><b>Leads abertos</b><span>${leads==null?'—':leads}</span></div><div class="list-item"><b>Saúde</b>${tech?status(tech.health):status('unknown')}</div><div class="list-item"><b>Latência</b><span>${tech?.latencyMs?tech.latencyMs+' ms':'—'}</span></div></div><div class="venture-modal-actions"><button class="btn primary" type="button" data-modal-venture-leads="${esc(v.slug)}">Abrir Leads / CRM →</button>${v.web?`<a class="btn" href="${v.web}" target="_blank">Abrir produto ↗</a>`:''}</div></aside></div></div></div>`;
+  document.getElementById('modal-close').onclick=closeModal;
+  document.getElementById('modal-bg').addEventListener('click',e=>{if(e.target.id==='modal-bg')closeModal()});
+  const leadBtn=document.querySelector('[data-modal-venture-leads]');
+  if(leadBtn) leadBtn.onclick=()=>{closeModal();openVentureLeads(leadBtn.dataset.modalVentureLeads)};
 }
 function closeModal(){modalRoot.innerHTML=''}
 
 async function renderOverview(){
  setHeader('Founder Command Center','Uma visão única de produto, receita, distribuição e tecnologia para todo o portfólio.');
  const snap=await fetchSnapshot();
+ if(!state.leads&&Array.isArray(snap.deals)) state.leads=snap.deals;
  const rev=(snap.cash||[]).filter(x=>x.kind==='revenue').reduce((a,x)=>a+Number(x.amount_brl||0),0);
  const cost=(snap.cash||[]).filter(x=>x.kind==='cost').reduce((a,x)=>a+Number(x.amount_brl||0),0);
  const pipe=(snap.deals||[]).filter(x=>!['won','lost'].includes(x.stage)).reduce((a,x)=>a+Number(x.value_brl||0),0);
@@ -47,4 +62,9 @@ async function renderOverview(){
  root.insertAdjacentHTML('afterbegin',`<div class="grid4 governance-kpis">${kpi('Contas mapeadas',cm.emails+' / '+cm.accounts,'com e-mail/login identificado')}${kpi('Domínios controlados',cm.domains,cm.renewals+' com renovação registrada')}${kpi('Pendências operacionais',cm.tasks,'roadmap aberto')}${kpi('Inventário AV OS','v0.2','exportável e editável')}</div>`);
 }
 
-function renderVentures(){setHeader('Ventures','Mapa consolidado das teses, estágios, prioridades e motores de geração de caixa.');root.innerHTML=`<div class="venture-grid">${P.map(ventureCard).join('')}</div>`;bindVentureCards()}
+async function renderVentures(){
+  setHeader('Ventures','Mapa consolidado das teses, estágios, prioridades e motores de geração de caixa.');
+  try{if(typeof loadLeads==='function') await loadLeads()}catch{}
+  root.innerHTML=`<div class="venture-grid">${P.map(ventureCard).join('')}</div>`;
+  bindVentureCards()
+}
