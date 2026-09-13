@@ -1,13 +1,14 @@
-import {CAMPAIGNS,campaignStatus,startCampaign} from './_prospecting.mjs';
+import {actorReady,startActorCampaign} from './_prospecting-actor.mjs';
 
 export const config={schedule:'0 12 * * 1'};
 
 export default async ()=>{
-  const enabled=campaignStatus().filter(c=>c.automatic&&CAMPAIGNS[c.venture]);
+  const ventures=['nexjud'];
   const results=[];
-  for(const item of enabled){
-    try{results.push(await startCampaign(item.venture))}
-    catch(error){results.push({venture:item.venture,error:String(error?.message||error)})}
+  for(const venture of ventures){
+    if(!actorReady(venture)){results.push({venture,status:'not_configured'});continue}
+    try{results.push(await startActorCampaign(venture))}
+    catch(error){results.push({venture,error:String(error?.message||error)})}
   }
-  return new Response(JSON.stringify({ok:true,scheduled:true,started:results.length,results}),{headers:{'content-type':'application/json'}});
+  return new Response(JSON.stringify({ok:true,scheduled:true,results}),{headers:{'content-type':'application/json'}});
 };
