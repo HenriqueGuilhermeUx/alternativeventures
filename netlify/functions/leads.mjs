@@ -1,5 +1,6 @@
 import {verifySession} from './_auth.mjs';
 import {configured,sb} from './_supabase.mjs';
+import {startActorCampaign,collectActorCampaign} from './_prospecting-actor.mjs';
 const known=new Set(['nexa','ecotracker','nexjud','docwallet','mindcompliance','sindcopilot','health-wallet','mydatamed','f-insight','nextgen','modo','smartbots','staff','mindsteps','taxagent','connexio']);
 const stages=new Set(['lead','qualified','meeting','proposal','won','lost']);
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json','cache-control':'no-store'}});
@@ -20,7 +21,16 @@ export default async (req)=>{
   }
   if(req.method==='POST'){
     let body; try{body=await req.json()}catch{return json({error:'invalid_json'},400)}
-    const venture=String(body?.venture||'').trim(); const company=String(body?.company||'').trim();
+    const venture=String(body?.venture||'').trim();
+    if(body?.action==='prospect'){
+      if(venture!=='nexjud')return json({error:'prospecting_not_enabled_for_venture'},400);
+      try{return json({ok:true,...await startActorCampaign(venture)},202)}catch(error){const message=String(error?.message||error);return json({error:message},message.includes('not_configured')?409:500)}
+    }
+    if(body?.action==='collect'){
+      if(venture!=='nexjud')return json({error:'prospecting_not_enabled_for_venture'},400);
+      try{return json({ok:true,...await collectActorCampaign(venture)},200)}catch(error){return json({error:String(error?.message||error)},500)}
+    }
+    const company=String(body?.company||'').trim();
     if(!known.has(venture)||!company) return json({error:'invalid_lead'},400);
     if(!configured) return json({error:'supabase_not_configured'},503);
     const contactName=String(body?.contactName||'').trim()||null;
