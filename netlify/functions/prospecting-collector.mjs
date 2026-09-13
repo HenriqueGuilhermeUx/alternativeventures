@@ -1,3 +1,13 @@
-import {collectActorCampaign} from './_prospecting-actor.mjs';
+import {ACTOR_VENTURES,actorReady,collectActorCampaign} from './_prospecting-actor.mjs';
+
 export const config={schedule:'0 15 * * *'};
-export default async()=>{try{return new Response(JSON.stringify(await collectActorCampaign('nexjud')),{headers:{'content-type':'application/json'}})}catch(error){return new Response(JSON.stringify({ok:false,error:String(error?.message||error)}),{headers:{'content-type':'application/json'}})}};
+
+export default async()=>{
+  const results=[];
+  for(const venture of ACTOR_VENTURES){
+    if(!actorReady(venture)){results.push({venture,status:'not_configured'});continue}
+    try{results.push(await collectActorCampaign(venture))}
+    catch(error){results.push({venture,error:String(error?.message||error)})}
+  }
+  console.log(JSON.stringify({collector:true,results}));
+};
