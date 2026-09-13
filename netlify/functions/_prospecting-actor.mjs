@@ -6,8 +6,17 @@ const actor=()=>String(env('APIFY_ACTOR_ID')||'compass~crawler-google-places').t
 const token=()=>String(env('APIFY_TOKEN')||'').trim();
 
 export const ACTOR_CAMPAIGNS={
-  nexjud:{maxItems:50,regions:['Santos, SP','São Paulo, SP'],keywords:['escritório de advocacia','advocacia empresarial','advogado empresarial','advogado tributário']}
+  nexjud:{maxItems:50,regions:['Santos, SP','São Paulo, SP'],keywords:['escritório de advocacia','advocacia empresarial','advogado empresarial','advogado tributário']},
+  sindcopilot:{maxItems:40,regions:['Santos, SP','São Paulo, SP'],keywords:['administradora de condomínios','administração condominial','síndico profissional']},
+  mindsteps:{maxItems:40,regions:['Santos, SP','São Paulo, SP'],keywords:['escola particular','colégio particular','educação infantil particular']},
+  mindcompliance:{maxItems:40,regions:['Santos, SP','São Paulo, SP'],keywords:['escritório de contabilidade','medicina do trabalho','consultoria de RH','segurança do trabalho']},
+  'health-wallet':{maxItems:35,regions:['Santos, SP','São Paulo, SP'],keywords:['clínica médica','laboratório de análises clínicas','clínica de diagnóstico']},
+  mydatamed:{maxItems:35,regions:['Santos, SP','São Paulo, SP'],keywords:['clínica médica','centro médico','consultório médico']},
+  smartbots:{maxItems:50,regions:['Santos, SP','São Paulo, SP'],keywords:['clínica odontológica','clínica de estética','imobiliária','pet shop','salão de beleza']},
+  modo:{maxItems:50,regions:['Santos, SP','São Paulo, SP'],keywords:['restaurante','academia','clínica de estética','pet shop','salão de beleza']}
 };
+
+export const ACTOR_VENTURES=Object.keys(ACTOR_CAMPAIGNS);
 
 const event=async(venture,name,metadata={},value=null)=>{if(configured)await sb('av_events',{method:'POST',body:JSON.stringify({venture_slug:venture,event_name:name,numeric_value:value,unit:value===null?null:'count',metadata})}).catch(()=>null)};
 const apify=async(path,init={})=>{
@@ -17,6 +26,7 @@ const apify=async(path,init={})=>{
 };
 
 export const actorReady=venture=>Boolean(token()&&ACTOR_CAMPAIGNS[venture]);
+export const actorEnabled=venture=>Boolean(ACTOR_CAMPAIGNS[venture]);
 
 export async function startActorCampaign(venture){
   const c=ACTOR_CAMPAIGNS[venture];if(!c)throw new Error('campaign_not_found');
@@ -24,8 +34,8 @@ export async function startActorCampaign(venture){
   const input={searchStringsArray,maxCrawledPlacesPerSearch:Math.max(3,Math.ceil(c.maxItems/searchStringsArray.length)),language:'pt-BR',skipClosedPlaces:true};
   const r=await apify(`acts/${encodeURIComponent(actor())}/runs`,{method:'POST',body:JSON.stringify(input)});
   const payload=await r.json(),run=payload?.data||payload;
-  await event(venture,'prospecting.run.started',{provider:'apify',mode:'actor',runId:run?.id||null,status:run?.status||null});
-  return {venture,runId:run?.id||null,status:run?.status||'READY'};
+  await event(venture,'prospecting.run.started',{provider:'apify',mode:'actor',runId:run?.id||null,status:run?.status||null,keywords:c.keywords,regions:c.regions});
+  return {venture,runId:run?.id||null,status:run?.status||'READY',maxItems:c.maxItems};
 }
 
 async function latestPendingRunId(venture){
