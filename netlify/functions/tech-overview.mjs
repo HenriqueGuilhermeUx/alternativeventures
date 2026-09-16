@@ -3,19 +3,20 @@ const ventures=[
  ['nexa','Nexa','HenriqueGuilhermeUx/nexa-site','https://trynexa.com.br'],
  ['ecotracker','EcoTracker','HenriqueGuilhermeUx/ecotracker','https://ecotracker-api-cik7.onrender.com/api/health'],
  ['nexjud','NexJud','HenriqueGuilhermeUx/nexjud','https://nexjudsolucoes.com.br'],
- ['docwallet','DocWallet','HenriqueGuilhermeUx/docwallet','https://docwallet.netlify.app'],
+ ['docwallet','DocWallet','HenriqueGuilhermeUx/docwallet','https://trydocwallet.com'],
  ['mindcompliance','MindCompliance / NR1Check','HenriqueGuilhermeUx/nr1check','https://nr1check-hx9wyw7b.manus.space/'],
  ['sindcopilot','SindCopilot','HenriqueGuilhermeUx/sindcopilot','https://sindcopilot-smupztac.manus.space/'],
  ['health-wallet','Health Wallet','HenriqueGuilhermeUx/healthwallet','https://healthwallet1.netlify.app'],
  ['mydatamed','MyDataMed','HenriqueGuilhermeUx/mydatamed','https://mydatamed.com'],
- ['f-insight','F-Insight','HenriqueGuilhermeUx/f-insight','https://f-insight.netlify.app'],
+ ['f-insight','F-Insight','HenriqueGuilhermeUx/f-insight','https://f-insight.org'],
  ['nextgen','NextGen Assets','HenriqueGuilhermeUx/nextgenassets','https://nextgenassets.com.br'],
  ['modo','MODO','HenriqueGuilhermeUx/modo','https://modo-api-3m10.onrender.com/health'],
  ['smartbots','SmartBots',null,'https://smartbots.club'],
  ['staff','Staff','HenriqueGuilhermeUx/smart-bot-staff',null],
- ['mindsteps','MindSteps','HenriqueGuilhermeUx/mindsteps-tutoria',null],
+ ['mindsteps','MindSteps','HenriqueGuilhermeUx/mindsteps-tutoria','https://mymindsteps.com.br'],
  ['taxagent','TaxAgent','HenriqueGuilhermeUx/TaxAgent',null],
- ['connexio','Connexio','HenriqueGuilhermeUx/connexio',null]
+ ['connexio','Connexio','HenriqueGuilhermeUx/connexio',null],
+ ['nexoffices','NexOffices',null,'https://nexoffices.com.br']
 ];
 function env(name){try{return globalThis.Netlify?.env?.get?.(name)||process.env[name]||''}catch{return process.env[name]||''}}
 async function repoData(repo){if(!repo)return null;try{const headers={Accept:'application/vnd.github+json','User-Agent':'alternative-ventures-os'};const token=env('GITHUB_TOKEN');if(token)headers.Authorization=`Bearer ${token}`;const r=await fetch(`https://api.github.com/repos/${repo}`,{headers});return r.ok?await r.json():null}catch{return null}}
