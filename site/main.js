@@ -46,6 +46,7 @@ link.textContent = 'Site →';
 group.insertBefore(link, group.firstChild);
 }
 
+updateVentureWebsite('EcoTracker', 'https://ecotracker.com.br');
 updateVentureWebsite('DocWallet', 'https://trydocwallet.com');
 updateVentureWebsite('Modo', 'https://trymodo.com.br');
 updateVentureWebsite('MindSteps', 'https://mymindsteps.com.br');
