@@ -1,6 +1,23 @@
 const CONTROL_KEY='avos_control_v02';
-const DEFAULTS_VERSION='2026-09-10-portfolio-accounts-v1';
+const DEFAULTS_VERSION='2026-09-16-venture-sites-v2';
 function clone(v){return JSON.parse(JSON.stringify(v))}
+function normalizeControlMetadata(d){
+  const serviceUrls={
+    'svc-docwallet-web':'https://trydocwallet.com',
+    'svc-modo-web':'https://trymodo.com.br',
+    'svc-finsight-web':'https://f-insight.org'
+  };
+  d.services=(d.services||[]).map(x=>serviceUrls[x.id]?{...x,url:serviceUrls[x.id]}:x);
+  const ensure=(collection,record)=>{if(!(d[collection]||[]).some(x=>x.id===record.id)){d[collection]=d[collection]||[];d[collection].push(record)}};
+  ensure('domains',{id:'dom-docwallet',domain:'trydocwallet.com',venture:'docwallet',registrar:'',accountEmail:'',dnsProvider:'',target:'DocWallet',renewalDate:'',autoRenew:'',annualCost:'',status:'ativo',notes:''});
+  ensure('domains',{id:'dom-modo',domain:'trymodo.com.br',venture:'modo',registrar:'',accountEmail:'',dnsProvider:'',target:'MODO',renewalDate:'',autoRenew:'',annualCost:'',status:'ativo',notes:''});
+  ensure('domains',{id:'dom-mindsteps',domain:'mymindsteps.com.br',venture:'mindsteps',registrar:'',accountEmail:'',dnsProvider:'',target:'MindSteps',renewalDate:'',autoRenew:'',annualCost:'',status:'ativo',notes:''});
+  ensure('domains',{id:'dom-finsight',domain:'f-insight.org',venture:'f-insight',registrar:'',accountEmail:'',dnsProvider:'',target:'F-Insight',renewalDate:'',autoRenew:'',annualCost:'',status:'ativo',notes:''});
+  ensure('domains',{id:'dom-nexoffices',domain:'nexoffices.com.br',venture:'nexoffices',registrar:'',accountEmail:'',dnsProvider:'',target:'NexOffices',renewalDate:'',autoRenew:'',annualCost:'',status:'ativo',notes:''});
+  ensure('services',{id:'svc-mindsteps-web',provider:'Web',venture:'mindsteps',name:'MindSteps Web',environment:'production',url:'https://mymindsteps.com.br',accountId:'',plan:'',monthlyCost:'',billingEmail:'',status:'ativo',notes:''});
+  ensure('services',{id:'svc-nexoffices-web',provider:'Web',venture:'nexoffices',name:'NexOffices Web',environment:'production',url:'https://nexoffices.com.br',accountId:'',plan:'',monthlyCost:'',billingEmail:'',status:'ativo',notes:''});
+  return d;
+}
 function mergeDefaults(saved){
   const base=clone(window.AV_CONTROL_DEFAULTS);
   const source=saved&&typeof saved==='object'?saved:{};
@@ -14,6 +31,7 @@ function mergeDefaults(saved){
     }else if(source[key]!==undefined){base[key]=source[key]}
   }
   for(const [key,value] of Object.entries(source)){if(!(key in base))base[key]=value}
+  normalizeControlMetadata(base);
   base._defaultsVersion=DEFAULTS_VERSION;
   return base;
 }
