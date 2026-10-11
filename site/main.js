@@ -104,7 +104,9 @@ const pwaDirectory = {
   'Staff': '/app/staff',
   'SindCopilot': '/app/sindcopilot',
   'Health Wallet': '/app/healthwallet',
-  'MindSteps': '/app/mindsteps'
+  'MindSteps': '/app/mindsteps',
+  'Ecotracker': '/app/ecotracker',
+  'Connexio': '/app/connexio'
 };
 
 function addPwaLinks() {
