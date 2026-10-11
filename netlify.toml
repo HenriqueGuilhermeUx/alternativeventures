@@ -126,6 +126,19 @@
   status = 302
   force = true
 
+
+[[redirects]]
+  from = "/app/ecotracker"
+  to = "https://play.google.com/store/apps/details?id=com.alternativeventures.ecotracker"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app/connexio"
+  to = "https://play.google.com/store/apps/details?id=br.com.alternativeventures.connexio"
+  status = 302
+  force = true
+
 [[headers]]
   for = "/login/*"
   [headers.values]
