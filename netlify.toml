@@ -129,13 +129,13 @@
 
 [[redirects]]
   from = "/app/ecotracker"
-  to = "https://play.google.com/store/apps/details?id=com.alternativeventures.ecotracker"
+  to = "https://ecotracker.com.br/app"
   status = 302
   force = true
 
 [[redirects]]
   from = "/app/connexio"
-  to = "https://play.google.com/store/apps/details?id=br.com.alternativeventures.connexio"
+  to = "https://connexio10.netlify.app/welcome"
   status = 302
   force = true
 
