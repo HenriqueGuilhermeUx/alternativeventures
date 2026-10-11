@@ -57,6 +57,75 @@
   to = "/.netlify/functions/founder-brief"
   status = 200
 
+
+# Stable share/install links for portfolio PWAs.
+# Keep these Alternative Ventures URLs permanent; only update the destination when an app moves.
+[[redirects]]
+  from = "/app/nexa"
+  to = "https://trynexa.com.br/wallet-v148.html"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app/f-insight"
+  to = "https://f-insight.org/app/mobile"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app/nexjud"
+  to = "https://nexjudsolucoes.com.br/app"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app/docwallet"
+  to = "https://trydocwallet.com/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app/mindcompliance"
+  to = "https://mindcompliance.org/app?source=pwa"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app/modo"
+  to = "https://trymodo.com.br/app/mobile"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app/smartbots"
+  to = "https://smartbots.club/smartbots-pwa.html"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app/staff"
+  to = "https://app.smartbots.club/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app/sindcopilot"
+  to = "https://sindcopilot.com/app"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app/healthwallet"
+  to = "https://healthwallet1.netlify.app/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/app/mindsteps"
+  to = "https://mymindsteps.com.br/hoje"
+  status = 302
+  force = true
+
 [[headers]]
   for = "/login/*"
   [headers.values]
