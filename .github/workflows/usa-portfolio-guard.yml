@@ -1,0 +1,19 @@
+name: Alternative Ventures USA preview guard
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'site/us/**'
+      - 'scripts/verify-usa-portfolio.mjs'
+      - '.github/workflows/usa-portfolio-guard.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/verify-usa-portfolio.mjs
