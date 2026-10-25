@@ -5,6 +5,7 @@ on:
     paths:
       - 'site/us/**'
       - 'scripts/usa-browser-smoke.mjs'
+      - 'scripts/usa-live-demos-browser.mjs'
       - '.github/workflows/usa-browser-smoke.yml'
   workflow_dispatch:
 permissions:
@@ -24,3 +25,5 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Test USA page in mobile and desktop Chromium
         run: node scripts/usa-browser-smoke.mjs
+      - name: Verify four deployed Netlify USA demos
+        run: node scripts/usa-live-demos-browser.mjs
