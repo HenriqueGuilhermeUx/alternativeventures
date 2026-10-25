@@ -1,0 +1,26 @@
+name: Alternative Ventures USA browser QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'site/us/**'
+      - 'scripts/usa-browser-smoke.mjs'
+      - '.github/workflows/usa-browser-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test-only Playwright dependency
+        run: npm install --no-save --no-package-lock --ignore-scripts playwright@1.57.0
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Test USA page in mobile and desktop Chromium
+        run: node scripts/usa-browser-smoke.mjs
