@@ -21,8 +21,14 @@ try {
     const brazilianApiCalls = [];
     page.on('pageerror', error => runtimeErrors.push(error.message));
     page.on('request', request => {
-      const u = request.url();
-      if (/onrender\.com|supabase\.co|\/api\/|(?:trymodo|trynexa|nexoffices)\.com\.br/i.test(u)) brazilianApiCalls.push(u);
+      const u = new URL(request.url());
+      const preview = new URL(item.url);
+      const outsideProviders = /(?:^|\\.)onrender\\.com$|(?:^|\\.)supabase\\.co$/i.test(u.hostname);
+      const brazilApp = ['trymodo.com.br', 'trynexa.com.br', 'nexoffices.com.br', 'nexoffices.com.br'].includes(u.hostname);
+      const previewApi = u.origin === preview.origin && u.pathname.startsWith('/api/');
+      // The Netlify deploy-preview toolbar calls app.netlify.com telemetry APIs;
+      // only block product API endpoints and Brazilian production destinations.
+      if (outsideProviders || brazilApp || previewApi) brazilianApiCalls.push(u.href);
     });
     const response = await page.goto(item.url, {waitUntil:'domcontentloaded',timeout:45000});
     assert.ok(response?.ok(), item.label + ' preview unavailable: ' + response?.status());
