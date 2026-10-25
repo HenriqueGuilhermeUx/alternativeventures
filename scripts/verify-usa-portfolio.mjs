@@ -19,7 +19,7 @@ for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
   assert.ok(sectionIds.includes(target), "Broken in-page navigation target: " + target);
 }
 const demoAnchors = [...html.matchAll(/<a\b[^>]*class="product-demo-link"[^>]*>/g)].map(match => match[0]);
-assert.equal(demoAnchors.length, 4, "Exactly four verified staging demo links are expected");
+assert.equal(demoAnchors.length, 5, "Exactly five verified staging demo links are expected");
 for (const anchor of demoAnchors) {
   assert.match(anchor, /target="_blank"/, "Staging demos must open in a separate tab");
   assert.match(anchor, /aria-label="[^"]+new tab"/, "Staging demos need a descriptive new-tab label");
@@ -28,8 +28,7 @@ for (const anchor of demoAnchors) {
     assert.ok(rel.includes(token), "Missing safe external-link rel: " + token);
   }
 }
-assert.match(html, /NexOffices interactive preview link is withheld until a staging URL is verified\./,
-  "Unverified NexOffices staging must remain visibly gated");
+assert.ok(html.includes('Explore NexOffices USA demo'), 'NexOffices must link only to the independent US-only static staging host');
 for (const name of ["MODO", "SmartBots", "DocWallet", "F-Insight", "NexOffices"]) {
   assert.ok(html.includes(name), "Missing selected US preview: " + name);
 }
@@ -42,6 +41,7 @@ const approvedDemoLinks = [
   "https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo",
   "https://deploy-preview-12--docwallet.netlify.app/us/workspace",
   "https://deploy-preview-26--f-insight.netlify.app/us",
+  "https://nexoffices-usa-staging.onrender.com/us/",
 ];
 const approvedExternalLinks = new Set([
   "https://fonts.googleapis.com",
