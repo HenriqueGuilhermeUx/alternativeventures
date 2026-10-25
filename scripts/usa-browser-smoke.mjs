@@ -35,12 +35,13 @@ try {
     const demos = await page.locator('a.product-demo-link').evaluateAll(links =>
       links.map(element => ({ url: element.getAttribute('href'), target: element.getAttribute('target'), rel: element.getAttribute('rel') }))
     );
-    assert.equal(demos.length, 4);
+    assert.equal(demos.length, 5);
     const expected = [
       'https://deploy-preview-163--modo1.netlify.app/us/demo',
       'https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo',
       'https://deploy-preview-12--docwallet.netlify.app/us/workspace',
       'https://deploy-preview-26--f-insight.netlify.app/us',
+      'https://nexoffices-usa-staging.onrender.com/us/',
     ];
     assert.deepEqual(demos.map(link => link.url), expected);
     for (const link of demos) {
@@ -49,7 +50,7 @@ try {
       assert.match(link.rel, /noreferrer/);
       assert.match(link.rel, /nofollow/);
     }
-    assert.ok(await page.getByText('NexOffices interactive preview link is withheld until a staging URL is verified.').isVisible());
+    assert.ok(await page.getByRole('link', {name:/Open NexOffices USA interactive preview/}).isVisible());
     const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
     const contentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     assert.ok(contentWidth <= viewportWidth + 2, 'Horizontal overflow at viewport ' + width + ': ' + contentWidth);
