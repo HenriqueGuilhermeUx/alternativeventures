@@ -16,7 +16,26 @@ for (const name of ["MODO", "SmartBots", "DocWallet", "F-Insight", "NexOffices"]
 assert.match(html, /preview only/i, "US commercial status disclaimer missing");
 assert.match(html, /does not open accounts or accept orders/i);
 assert.ok(!/action=["']https?:/i.test(html), "No remote forms allowed on preview");
-assert.ok(!/href=["']https?:\/\/(?!fonts|alternativeventures)/i.test(html), "No links to live Brazilian product apps from US preview");
+
+const approvedDemoLinks = [
+  "https://deploy-preview-163--modo1.netlify.app/us/demo",
+  "https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo",
+  "https://deploy-preview-12--docwallet.netlify.app/us/workspace",
+  "https://deploy-preview-26--f-insight.netlify.app/us",
+];
+const approvedExternalLinks = new Set([
+  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap",
+  ...approvedDemoLinks,
+]);
+const absoluteLinks = [...html.matchAll(/href=["'](https?:\/\/[^"']+)["']/gi)].map(match => match[1].replace(/&amp;/g, '&'));
+for (const link of absoluteLinks) {
+  assert.ok(approvedExternalLinks.has(link), "Unexpected external link on USA preview: " + link);
+}
+for (const demo of approvedDemoLinks) {
+  assert.ok(absoluteLinks.includes(demo), "Missing US staging walkthrough: " + demo);
+}
+assert.ok(!/(https?:\/\/)?(?:tr ymodo|trydocwallet|f-insight\.org|nexoffices\.com\.br)/i.test(absoluteLinks.join(' ')), "Brazilian production app links are forbidden");
+
 assert.match(brazil, /<html lang="pt-BR">/, "Brazil locale must remain intact");
 assert.ok(netlify.includes('publish = "site"'), "Existing publishing root must remain unchanged");
 console.log("PASS: Alternative Ventures USA static preview, BR separation and no-US-commerce guard");
