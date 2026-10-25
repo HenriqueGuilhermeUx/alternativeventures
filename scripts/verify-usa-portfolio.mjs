@@ -10,6 +10,26 @@ const netlify = read("netlify.toml");
 assert.match(html, /<html lang="en-US">/, "US language missing");
 assert.match(html, /name="robots"\s+content="noindex,nofollow"/, "Preview must not be indexed");
 assert.match(html, /<title>Alternative Ventures USA/i);
+assert.match(html, /<a class="skip-link" href="#main-content">Skip to main content<\/a>/, "Keyboard skip link missing");
+assert.match(html, /<main id="main-content" tabindex="-1">/, "Skip link target must be focusable");
+assert.match(html, /\.skip-link:focus\{top:12px\}/, "Skip link must be visible on keyboard focus");
+const sectionIds = [...html.matchAll(/\\bid="([^"]+)"/g)].map(match => match[1]);
+assert.equal(new Set(sectionIds).size, sectionIds.length, "Duplicate section ids");
+for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
+  assert.ok(sectionIds.includes(target), "Broken in-page navigation target: " + target);
+}
+const demoAnchors = [...html.matchAll(/<a\\b[^>]*class="product-demo-link"[^>]*>/g)].map(match => match[0]);
+assert.equal(demoAnchors.length, 4, "Exactly four verified staging demo links are expected");
+for (const anchor of demoAnchors) {
+  assert.match(anchor, /target="_blank"/, "Staging demos must open in a separate tab");
+  assert.match(anchor, /aria-label="[^"]+new tab"/, "Staging demos need a descriptive new-tab label");
+  const rel = anchor.match(/rel="([^"]+)"/)?.[1].split(/\\s+/) ?? [];
+  for (const token of ["noopener", "noreferrer", "nofollow"]) {
+    assert.ok(rel.includes(token), "Missing safe external-link rel: " + token);
+  }
+}
+assert.match(html, /NexOffices interactive preview link is withheld until a staging URL is verified\./,
+  "Unverified NexOffices staging must remain visibly gated");
 for (const name of ["MODO", "SmartBots", "DocWallet", "F-Insight", "NexOffices"]) {
   assert.ok(html.includes(name), "Missing selected US preview: " + name);
 }
