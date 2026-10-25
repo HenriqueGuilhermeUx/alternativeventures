@@ -4,7 +4,11 @@ import { readFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const html = readFileSync('site/us/index.html', 'utf8');
-const urls = [...html.matchAll(/<a\b[^>]*class="product-demo-link"[^>]*href="([^"]+)"/g)].map(x => x[1]);
+const allDemoUrls = [...html.matchAll(/<a\b[^>]*class="product-demo-link"[^>]*href="([^"]+)"/g)].map(x => x[1]);
+const urls = allDemoUrls.filter(url => new URL(url).hostname.endsWith('.netlify.app'));
+assert.equal(allDemoUrls.length, 5, 'The USA portfolio must expose exactly five approved demo links');
+assert.ok(allDemoUrls.includes('https://nexoffices-usa-staging.onrender.com/us/'), 'NexOffices Render link missing');
+// The separate usa-nexoffices-render-browser test exercises the fifth, isolated Render demo.
 const expectations = [
   { label: 'MODO USA', url: 'https://deploy-preview-163--modo1.netlify.app/us/demo', heading: 'Campaign brief' },
   { label: 'SmartBots USA', url: 'https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo', heading: 'Lead inbox' },
