@@ -24,6 +24,8 @@ const approvedDemoLinks = [
   "https://deploy-preview-26--f-insight.netlify.app/us",
 ];
 const approvedExternalLinks = new Set([
+  "https://fonts.googleapis.com",
+  "https://fonts.gstatic.com",
   "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap",
   ...approvedDemoLinks,
 ]);
@@ -34,7 +36,7 @@ for (const link of absoluteLinks) {
 for (const demo of approvedDemoLinks) {
   assert.ok(absoluteLinks.includes(demo), "Missing US staging walkthrough: " + demo);
 }
-assert.ok(!/(https?:\/\/)?(?:tr ymodo|trydocwallet|f-insight\.org|nexoffices\.com\.br)/i.test(absoluteLinks.join(' ')), "Brazilian production app links are forbidden");
+assert.ok(!/(https?:\/\/)?(?:trymodo|trydocwallet|f-insight\.org|nexoffices\.com\.br)/i.test(absoluteLinks.join(' ')), "Brazilian production app links are forbidden");
 
 assert.match(brazil, /<html lang="pt-BR">/, "Brazil locale must remain intact");
 assert.ok(netlify.includes('publish = "site"'), "Existing publishing root must remain unchanged");
