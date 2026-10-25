@@ -10,3 +10,7 @@ Branch: `feature/usa-portfolio-preview-20261024` · Status: US public-preview on
 - Regulatory/research work for NexJud, health, education, US signatures and market data remains in the separate USA research workstream.
 
 Release checks: verify /us/ direct visit + refresh; verify /, /login, /office, /dev remain unchanged; product and legal review; staging domain and access control; check redirect precedence; enable indexing only when real launch has occurred.
+
+## Demo links (staging only)
+
+The `/us/` portfolio page links to the approved Netlify PR previews for MODO, SmartBots, DocWallet and F-Insight. These destinations are explicitly allowlisted in `scripts/verify-usa-portfolio.mjs`. The NexOffices preview remains informational because its US branch does not yet have a validated staging URL. None of these links lead to Brazilian production signup or purchasing flows.
