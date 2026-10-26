@@ -75,7 +75,22 @@ try {
     assert.deepEqual(runtimeErrors, [], item.label + ': desktop page errors');
     assert.deepEqual(brazilianApiCalls, [], item.label + ': desktop unauthorized Brazilian API requests');
     await page.screenshot({ path: `artifacts/usa-review/${slug}-1280px.png`, fullPage: true, animations: 'disabled' });
-    console.log('PASS: ' + item.label + ' mobile + desktop -> ' + item.url);
+    // Narrow 320px phones are a distinct layout boundary from 390px devices.
+    // Verify the real deployed preview, not a local mock or screenshot alone.
+    await page.setViewportSize({ width: 320, height: 850 });
+    await page.getByRole('heading', { name: item.heading }).waitFor({ timeout: 20000 });
+    const narrowDimensions = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    assert.ok(narrowDimensions.content <= narrowDimensions.viewport + 2,
+      item.label + ': 320px horizontal overflow: ' + JSON.stringify(narrowDimensions));
+    assert.equal(await page.locator('html').getAttribute('lang'), 'en-US', item.label + ': 320px locale mismatch');
+    assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,nofollow', item.label + ': 320px indexing protection absent');
+    assert.deepEqual(runtimeErrors, [], item.label + ': 320px page errors');
+    assert.deepEqual(brazilianApiCalls, [], item.label + ': 320px unauthorized requests');
+    await page.screenshot({ path: `artifacts/usa-review/${slug}-320px.png`, fullPage: true, animations: 'disabled' });
+    console.log('PASS: ' + item.label + ' 320px + 390px + 1280px -> ' + item.url);
     await page.close();
   }
 } finally { await browser?.close(); }
