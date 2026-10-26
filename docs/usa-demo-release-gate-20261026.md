@@ -32,3 +32,16 @@ The institutional documentation-only commit `2eed365` passed both USA preview gu
 ## Decision
 
 Status: **NOT FULLY HOMOLOGATED**. Blockers: independent visual/accessibility review, preview SHA verification, Brazil baseline regression classification, and explicit commercial authorization. Demo evidence is for review only.
+
+## NexOffices USA regression triage — 2026-10-26
+
+Read-only inspection of failed jobs at USA PR #91 HEAD `44e1c5b6900da8cae0033ac9c19ecd5995fb843b`:
+
+| Workflow | Failed run | Observed assertion |
+| --- | --- | --- |
+| Receiving Account Onboarding V1 | [40354112979](https://github.com/HenriqueGuilhermeUx/nexoffice/actions/runs/40354112979) | missing onboarding copy: `Recebimento Pix` |
+| Product Discovery Onboarding V1 | [40354112648](https://github.com/HenriqueGuilhermeUx/nexoffice/actions/runs/40354112648) | missing capability tile: `Pergunte à empresa` |
+| NextGen Financial Engine V1 | [40354112148](https://github.com/HenriqueGuilhermeUx/nexoffice/actions/runs/40354112148) | missing practical UX: `Pix conectado ao seu financeiro` |
+| DocWallet Workspace Experience V1 | [40354112491](https://github.com/HenriqueGuilhermeUx/nexoffice/actions/runs/40354112491) | DocFlow visible |
+
+These are actual failed assertions, not proof that the underlying Brazilian functions are broken or that failures predate the USA branch. **Baseline main CI comparison remains required**. Keep the four existing issues #92–#95 separate; do not change Brazilian components, rewrite assertions, suppress checks or count 14/18 as an all-green CI. USA isolated browser QA passed on this SHA. The institutional PR HEAD `b9d63c119a6ff6f5dadea0305bb086591b2865a6` passed both preview guard and browser QA; revalidate after any new commit.
