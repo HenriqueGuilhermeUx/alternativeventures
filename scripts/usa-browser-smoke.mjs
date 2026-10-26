@@ -46,6 +46,13 @@ try {
       links.map(element => ({ url: element.getAttribute('href'), target: element.getAttribute('target'), rel: element.getAttribute('rel') }))
     );
     assert.equal(demos.length, 5);
+    // WCAG-friendly touch targets: all five demo links must be at least 44px
+    // tall and wide across narrow mobile and desktop viewports.
+    for (const link of await page.locator('a.product-demo-link').all()) {
+      const box = await link.boundingBox();
+      assert.ok(box && box.height >= 44 && box.width >= 44,
+        `Demo link touch target too small at ${width}px: ${JSON.stringify(box)}`);
+    }
     const expected = [
       'https://deploy-preview-163--modo1.netlify.app/us/demo',
       'https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo',
