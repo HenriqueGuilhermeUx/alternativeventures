@@ -53,6 +53,13 @@ try {
       assert.ok(box && box.height >= 44 && box.width >= 44,
         `Demo link touch target too small at ${width}px: ${JSON.stringify(box)}`);
     }
+    // Primary header navigation is interactive on every viewport, not just the
+    // five demo cards. Enforce generous touch targets for the logo and menu.
+    for (const link of await page.locator('header a').all()) {
+      const box = await link.boundingBox();
+      assert.ok(box && box.height >= 44 && box.width >= 44,
+        `Header navigation target too small at ${width}px: ${await link.getAttribute('href')} ${JSON.stringify(box)}`);
+    }
     const expected = [
       'https://deploy-preview-163--modo1.netlify.app/us/demo',
       'https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo',
