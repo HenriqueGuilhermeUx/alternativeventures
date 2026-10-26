@@ -140,5 +140,15 @@
     <span>US operations and regulated services are not yet presented as active.</span>
     <a href="/" hreflang="pt-BR">View the Brazilian portfolio</a>
   </footer>
+  <script>
+    // The skip link must move keyboard focus, not just scroll to the fragment.
+    document.querySelector('.skip-link').addEventListener('click', event => {
+      event.preventDefault();
+      const main = document.getElementById('main-content');
+      history.replaceState(null, '', '#main-content');
+      main.focus();
+      main.scrollIntoView({ block: 'start' });
+    });
+  </script>
 </body>
 </html>
