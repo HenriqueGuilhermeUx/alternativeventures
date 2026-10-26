@@ -29,6 +29,8 @@ try {
     assert.match(csp, /form-action 'none'/);
     assert.equal(await page.locator('.avnw-list article').count(), 3);
     assert.equal(await page.locator('.avsp-list article').count(), 3);
+    await page.getByRole('heading', {name:'Know exactly what needs review.'}).waitFor();
+    assert.equal(await page.locator('.avdr-list article').count(), 3);
     if (width === 390) {
       await page.getByLabel('Task description').fill('Fictional staging QA task');
       await page.getByRole('button', {name:'Add sample task'}).click();
@@ -37,10 +39,17 @@ try {
       await page.getByLabel('Fictional organization').fill('Example LLC');
       await page.getByRole('button', {name:'Add sample opportunity'}).click();
       assert.equal(await page.locator('.avsp-list article').count(), 4);
+      await page.getByLabel('Fictional document title').fill('Sample legal-review checklist');
+      await page.getByRole('button', {name:'Add sample document'}).click();
+      assert.equal(await page.locator('.avdr-list article').count(), 4);
+      await page.getByLabel('Sample legal-review checklist review stage').selectOption('In review');
+      await page.getByText('Sample legal-review checklist: Draft → In review').waitFor();
       await page.reload({waitUntil:'domcontentloaded'});
       await page.getByRole('heading', {name:'Keep every next step visible.'}).waitFor();
       assert.equal(await page.locator('.avnw-list article').count(), 3, 'Task demo must not persist');
       assert.equal(await page.locator('.avsp-list article').count(), 3, 'CRM demo must not persist');
+      assert.equal(await page.locator('.avdr-list article').count(), 3, 'Document review demo must not persist');
+      assert.equal(await page.locator('.avdr-activity li').count(), 0, 'Review activity cannot persist');
     }
     const viewport = await page.evaluate(() => document.documentElement.clientWidth);
     const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
