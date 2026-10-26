@@ -40,6 +40,20 @@ try {
     assert.equal(await page.locator('html').getAttribute('lang'), 'en-US');
     assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,nofollow');
     assert.equal(await page.locator('article.card').count(), 5);
+    // Prevent inaccessible or ambiguous navigation as new US products are added.
+    assert.equal(await page.getByRole('main').count(), 1, 'Exactly one main landmark is required');
+    assert.equal(await page.getByRole('heading', { level: 1 }).count(), 1, 'Exactly one page h1 is required');
+    const linkAudit = await page.locator('a').evaluateAll(links => links.map(link => ({
+      href: link.getAttribute('href'),
+      name: (link.getAttribute('aria-label') || link.innerText || '').trim(),
+    })));
+    for (const link of linkAudit) {
+      assert.ok(link.href && link.href !== '#', 'Navigation link has an empty or placeholder destination');
+      assert.ok(link.name.length > 0, 'Navigation link is missing an accessible name: ' + link.href);
+    }
+    const allIds = await page.locator('[id]').evaluateAll(elements => elements.map(el => el.id));
+    assert.equal(new Set(allIds).size, allIds.length, 'Duplicate DOM ids break label and fragment navigation');
+
     const names = await page.locator('article.card h3').allInnerTexts();
     assert.deepEqual(names, ['MODO', 'SmartBots', 'DocWallet', 'F-Insight', 'NexOffices']);
     const demos = await page.locator('a.product-demo-link').evaluateAll(links =>
@@ -116,6 +130,8 @@ try {
     links => links.map(link => link.getAttribute('href'))
   );
   const focusedKeyboardLinks = [];
+  const focusedHeaderLinks = [];
+  const expectedHeaderLinks = await contrast.locator('header a').evaluateAll(links => links.map(link => link.getAttribute('href')));
   for (let tab = 0; tab < 20 && focusedKeyboardLinks.length < 5; tab++) {
     await contrast.keyboard.press('Tab');
     const focus = await contrast.evaluate(() => {
@@ -123,11 +139,17 @@ try {
       const style = getComputedStyle(element);
       return {
         className: element.className,
+        inHeader: Boolean(element.closest('header')),
         href: element.getAttribute('href'),
         outlineStyle: style.outlineStyle,
         outlineWidth: parseFloat(style.outlineWidth),
       };
     });
+    if (focus.inHeader) {
+      assert.equal(focus.outlineStyle, 'solid', 'High-contrast header link needs a solid keyboard focus ring');
+      assert.ok(focus.outlineWidth >= 3, 'High-contrast header focus ring must be at least 3px');
+      focusedHeaderLinks.push(focus.href);
+    }
     if (focus.className === 'product-demo-link') {
       assert.equal(focus.outlineStyle, 'solid', 'High-contrast demo link needs a solid keyboard focus ring');
       assert.ok(focus.outlineWidth >= 3, 'High-contrast demo link focus ring must be at least 3px');
@@ -136,6 +158,8 @@ try {
   }
   assert.deepEqual(focusedKeyboardLinks, expectedKeyboardLinks,
     'All five USA demos must be keyboard reachable in order in forced-colors mode');
+  assert.deepEqual(focusedHeaderLinks, expectedHeaderLinks,
+    'Every header link must be keyboard reachable in order with a visible high-contrast focus ring');
   await contrast.close();
   console.log('PASS: institutional USA 320/390/1280px browser QA, refresh, reduced motion, keyboard focus, forced-colors keyboard navigation, approved-only network requests and staging links');
 } finally {
