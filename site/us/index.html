@@ -57,6 +57,14 @@
     .step p{color:var(--muted);font-size:14px;line-height:1.65;margin:0}
     footer{border-top:1px solid var(--line);padding:25px 0 45px;display:flex;gap:18px;align-items:center;justify-content:space-between;color:#97a5c0;font-size:12px;flex-wrap:wrap}
     @media(max-width:720px){.hero{padding:68px 0}.grid,.steps{grid-template-columns:1fr}.card.wide{grid-column:auto}.nav{gap:12px}.card{min-height:auto}.section{padding:40px 0}}
+    /* Preserve distinguishable controls and keyboard focus in Windows high-contrast mode. */
+    @media(forced-colors:active){
+      .card{background:Canvas;border-color:CanvasText}
+      .card .tag{border-color:CanvasText;color:CanvasText}
+      .product-demo-link{color:LinkText;border-bottom-color:LinkText}
+      .primary,.secondary{background:Canvas;color:LinkText;border:1px solid LinkText}
+      a:focus-visible{outline:3px solid Highlight;outline-offset:5px}
+    }
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
   </style>
 </head>
