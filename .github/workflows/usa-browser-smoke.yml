@@ -7,6 +7,7 @@ on:
       - 'scripts/usa-browser-smoke.mjs'
       - 'scripts/usa-live-demos-browser.mjs'
       - 'scripts/usa-nexoffices-render-browser.mjs'
+      - 'scripts/usa-evidence-manifest.mjs'
       - '.github/workflows/usa-browser-smoke.yml'
   workflow_dispatch:
 permissions:
@@ -30,11 +31,17 @@ jobs:
         run: node scripts/usa-live-demos-browser.mjs
       - name: Verify separate NexOffices USA Render staging
         run: node scripts/usa-nexoffices-render-browser.mjs
-      - name: Preserve fictional-data screenshots for manual review
+      - name: Verify screenshots and generate SHA-256 review manifest
+        env:
+          USA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/usa-evidence-manifest.mjs
+      - name: Preserve fictional-data screenshots and integrity manifest for manual review
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: usa-portfolio-visual-evidence
-          path: artifacts/usa-review/*.png
-          if-no-files-found: warn
+          path: |
+            artifacts/usa-review/*.png
+            artifacts/usa-review/manifest.json
+          if-no-files-found: error
           retention-days: 7
