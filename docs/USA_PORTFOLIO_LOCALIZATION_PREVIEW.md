@@ -14,6 +14,7 @@ Branch: `feature/usa-portfolio-preview-20261024`.
 - NexOffices: https://nexoffices-usa-staging.onrender.com/us/ (separate, static-only staging; not the Brazilian app)
 - Links are allowlisted by `scripts/verify-usa-portfolio.mjs`. The institutional browser suite exercises 320/390/1280px and checks keyboard skip-link focus, overflow, runtime errors and unapproved network requests.
 - `scripts/usa-live-demos-browser.mjs` and `scripts/usa-nexoffices-render-browser.mjs` verify that linked previews actually render expected English demo content.
+- Review evidence includes 13 integrity-checked PNGs: institutional 320/390/1280px; MODO, SmartBots, DocWallet and F-Insight at 390/1280px; NexOffices at 390/1280px. `scripts/usa-evidence-manifest.mjs` fails CI on missing or mismatched captures and writes SHA-256 hashes. Screenshots are not a substitute for human visual/accessibility review.
 
 ## Evidence available before this update
 
