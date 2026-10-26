@@ -90,6 +90,44 @@ try {
     assert.deepEqual(runtimeErrors, [], item.label + ': 320px page errors');
     assert.deepEqual(brazilianApiCalls, [], item.label + ': 320px unauthorized requests');
     await page.screenshot({ path: `artifacts/usa-review/${slug}-320px.png`, fullPage: true, animations: 'disabled' });
+    // Cross-repository end-to-end verification: a rendering screenshot alone
+    // cannot prove that the published preview's primary fictional workflow works.
+    // Exercise only local demo state. Never upload files, send messages or use
+    // accounts, payments, customer information or real providers.
+    await page.setViewportSize({ width: 390, height: 844 });
+    if (item.label === 'MODO USA') {
+      await page.getByLabel('Business name').fill('Sample neighborhood studio');
+      await page.getByLabel('Target audience').fill('Fictional local visitors');
+      await page.getByRole('button', { name: 'Build sample plan' }).click();
+      await page.getByText('Sample plan generated locally with predefined rules. No AI request was made.').waitFor();
+      await page.getByRole('heading', { name: 'Position your offer' }).waitFor();
+    } else if (item.label === 'SmartBots USA') {
+      await page.getByLabel('Name or alias').fill('Sample: Avery');
+      await page.getByLabel('Area of interest').fill('Fictional inquiry');
+      await page.getByRole('button', { name: 'Add sample lead' }).click();
+      await page.getByRole('button', { name: /Sample: Avery/i }).waitFor();
+      await page.getByRole('button', { name: 'Reset demo' }).click();
+      assert.equal(await page.getByRole('button', { name: /Sample: Avery/i }).count(), 0,
+        'SmartBots demo reset must remove the fictional lead');
+    } else if (item.label === 'DocWallet USA') {
+      await page.getByRole('button', { name: 'Mark reviewed' }).first().click();
+      assert.equal((await page.locator('.avus-grid article').nth(1).locator('h3').innerText()).trim(), '1',
+        'DocWallet sample review must update the local queue');
+      await page.getByRole('button', { name: 'Reset sample data' }).click();
+      assert.equal((await page.locator('.avus-grid article').nth(1).locator('h3').innerText()).trim(), '2',
+        'DocWallet reset must restore the fictional queue');
+    } else if (item.label === 'F-Insight USA') {
+      await page.getByLabel('Illustrative budget (USD)').fill('10000');
+      await page.getByLabel('Stocks allocation (%)').fill('70');
+      await page.getByLabel('Bonds allocation (%)').fill('40');
+      assert.match(await page.locator('.avfi-error').innerText(), /no more than 100%/i,
+        'F-Insight must reject an invalid hypothetical allocation');
+      await page.getByRole('button', { name: 'Reset scenario' }).click();
+      assert.equal(await page.getByLabel('Stocks allocation (%)').inputValue(), '50',
+        'F-Insight must restore its fictional defaults');
+    }
+    assert.deepEqual(runtimeErrors, [], item.label + ': interactive demo runtime errors');
+    assert.deepEqual(brazilianApiCalls, [], item.label + ': interactive demo attempted forbidden backend requests');
     console.log('PASS: ' + item.label + ' 320px + 390px + 1280px -> ' + item.url);
     await page.close();
   }
