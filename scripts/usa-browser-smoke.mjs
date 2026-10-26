@@ -70,11 +70,23 @@ try {
       assert.equal(new URL(page.url()).hash, '#main-content');
       assert.ok(await page.locator('#main-content').evaluate(element => document.activeElement === element), 'Skip link must move keyboard focus to main content');
     }
+    if (width === 390) {
+      // A direct refresh must retain the English preview rather than falling into a BR route.
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.getByRole('heading', { name: /Build what matters/i }).waitFor();
+      assert.equal(await page.locator('html').getAttribute('lang'), 'en-US');
+      assert.equal(await page.locator('a.product-demo-link').count(), 5);
+    }
     assert.deepEqual(errors, [], 'USA corporate page runtime errors');
     assert.deepEqual(unexpectedRequests, [], 'Institutional USA preview must not contact unapproved APIs or remote hosts');
     await page.close();
   }
-  console.log('PASS: institutional USA 320/390/1280px browser QA, keyboard focus, approved-only network requests and staging links');
+  // Respect operating-system reduced-motion preferences; avoid forced smooth scrolling.
+  const reduced = await browser.newPage({ viewport: { width: 390, height: 850 }, reducedMotion: 'reduce' });
+  await reduced.goto(base + '/us/', { waitUntil: 'domcontentloaded' });
+  assert.equal(await reduced.locator('html').evaluate(element => getComputedStyle(element).scrollBehavior), 'auto');
+  await reduced.close();
+  console.log('PASS: institutional USA 320/390/1280px browser QA, refresh, reduced motion, keyboard focus, approved-only network requests and staging links');
 } finally {
   await browser?.close();
   server.kill('SIGTERM');
