@@ -126,6 +126,20 @@ try {
       assert.equal(await page.getByLabel('Stocks allocation (%)').inputValue(), '50',
         'F-Insight must restore its fictional defaults');
     }
+    // Browser refresh alone does not prove that fictional inputs were never
+    // written to browser persistence. Assert the same isolated demo context
+    // has no stored customer-like data after each sample interaction.
+    const demoPersistence = await page.evaluate(() => ({
+      localKeys: Object.keys(localStorage),
+      sessionKeys: Object.keys(sessionStorage),
+      readableCookies: document.cookie,
+    }));
+    assert.deepEqual(demoPersistence.localKeys, [],
+      item.label + ': fictional workflow wrote localStorage');
+    assert.deepEqual(demoPersistence.sessionKeys, [],
+      item.label + ': fictional workflow wrote sessionStorage');
+    assert.equal(demoPersistence.readableCookies, '',
+      item.label + ': fictional workflow wrote readable cookies');
     // Functional demo interactions must not trigger real submission endpoints.
     // Network guards above cover the entire interaction, including asynchronous requests.
     const afterAction = await page.evaluate(() => ({
