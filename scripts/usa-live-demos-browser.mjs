@@ -1,6 +1,6 @@
 /** Verify that linked Netlify staging previews actually render the expected US demo, not just HTTP 200. */
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const html = readFileSync('site/us/index.html', 'utf8');
@@ -19,6 +19,7 @@ assert.deepEqual(urls, expectations.map(x => x.url), 'Portal links diverged from
 let browser;
 try {
   browser = await chromium.launch({ headless:true });
+  mkdirSync('artifacts/usa-review', { recursive: true });
   for (const item of expectations) {
     const page = await browser.newPage({viewport:{width:390,height:844}});
     const runtimeErrors = [];
@@ -41,6 +42,9 @@ try {
     assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,nofollow', item.label + ': indexing protection absent');
     assert.deepEqual(runtimeErrors, [], item.label + ': page errors');
     assert.deepEqual(brazilianApiCalls, [], item.label + ': unauthorized Brazilian API requests');
+    // These public staging pages contain fictional examples only; screenshots never include customer accounts.
+    const slug = item.label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    await page.screenshot({ path: `artifacts/usa-review/${slug}-390px.png`, fullPage: true, animations: 'disabled' });
     console.log('PASS: ' + item.label + ' -> ' + item.url);
     await page.close();
   }
