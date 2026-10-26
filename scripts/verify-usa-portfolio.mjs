@@ -36,6 +36,21 @@ assert.match(html, /preview only/i, "US commercial status disclaimer missing");
 assert.match(html, /does not open accounts or accept orders/i);
 assert.ok(!/action=["']https?:/i.test(html), "No remote forms allowed on preview");
 
+// The US institutional page is a non-interactive showcase. Fail closed if a
+// later change adds account inputs, embedded apps, executable third-party
+// scripts, persistence or browser-initiated data transmission.
+const forbiddenPreviewFeatures = [
+  ["input or submission controls", /<(?:form|input|textarea|select|button)\b/i],
+  ["embedded third-party content", /<(?:iframe|object|embed)\b/i],
+  ["external executable scripts", /<script\b[^>]*\bsrc\s*=/i],
+  ["inline HTML event handlers", /\bon[a-z]+\s*=/i],
+  ["client-side network calls", /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\s*\(/i],
+  ["persistent browser storage", /\b(?:localStorage|sessionStorage|indexedDB|serviceWorker)\b/i],
+];
+for (const [feature, pattern] of forbiddenPreviewFeatures) {
+  assert.ok(!pattern.test(html), "USA institutional preview must not contain " + feature);
+}
+
 const approvedDemoLinks = [
   "https://deploy-preview-163--modo1.netlify.app/us/demo",
   "https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo",
