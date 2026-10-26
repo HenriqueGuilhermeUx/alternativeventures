@@ -15,7 +15,7 @@ permissions:
 jobs:
   browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,8 +23,12 @@ jobs:
           node-version: '22'
       - name: Install test-only Playwright dependency
         run: npm install --no-save --no-package-lock --ignore-scripts playwright@1.57.0
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      # GitHub ubuntu-latest already includes Chromium runtime libraries. Avoid
+      # apt mirrors here: slow downloads exhausted the 12-minute job limit on
+      # run 40308868336 before any browser assertions could execute.
+      # If a runner lacks a required library, the browser test must fail closed.
+      - name: Install Chromium browser only (no apt mirror downloads)
+        run: npx playwright install chromium
       - name: Test USA page in mobile and desktop Chromium
         run: node scripts/usa-browser-smoke.mjs
       - name: Verify four deployed Netlify USA demos
