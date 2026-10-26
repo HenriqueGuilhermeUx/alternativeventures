@@ -61,6 +61,16 @@ try {
       assert.equal(await page.locator('.avcb-list article').count(), 2);
       await page.getByRole('button', {name:'Mark Review the sample service proposal as reviewed'}).click();
       await page.getByText('1 of 2 reviewed').waitFor();
+      // Synthetic interactions must not create browser-side records even when
+      // the UI appears to reset on refresh. Check before reloading, too.
+      const storedAfterActions = await page.evaluate(() => ({
+        localKeys: Object.keys(localStorage),
+        sessionKeys: Object.keys(sessionStorage),
+        readableCookies: document.cookie,
+      }));
+      assert.deepEqual(storedAfterActions.localKeys, [], 'NexOffices sample actions wrote localStorage');
+      assert.deepEqual(storedAfterActions.sessionKeys, [], 'NexOffices sample actions wrote sessionStorage');
+      assert.equal(storedAfterActions.readableCookies, '', 'NexOffices sample actions wrote readable cookies');
       await page.reload({waitUntil:'domcontentloaded'});
       await page.getByRole('heading', {name:'Keep every next step visible.'}).waitFor();
       assert.equal(await page.locator('.avnw-list article').count(), 3, 'Task demo must not persist');
