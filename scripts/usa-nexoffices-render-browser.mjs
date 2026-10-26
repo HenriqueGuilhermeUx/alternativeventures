@@ -25,6 +25,31 @@ try {
     await page.getByRole('heading', {name: 'See how a business command center could work.'}).waitFor();
     await page.getByRole('heading', {name: 'Keep every next step visible.'}).waitFor();
     assert.equal(await page.locator('html').getAttribute('lang'), 'en-US');
+    // Audit the *published* Render demo's accessible structure, not only its
+    // screenshot. This remains a regression gate, not a human WCAG sign-off.
+    assert.equal(await page.getByRole('main').count(), 1,
+      'NexOffices USA needs exactly one main landmark at ' + width + 'px');
+    assert.equal(await page.getByRole('heading', {level: 1}).count(), 1,
+      'NexOffices USA needs exactly one h1 at ' + width + 'px');
+    assert.match(await page.title(), /NexOffices USA/i,
+      'NexOffices USA browser title must identify the English preview');
+    const unnamedControls = await page.locator('input:not([type="hidden"]), select, textarea, button').evaluateAll(controls =>
+      controls.filter(el => el.getClientRects().length > 0).filter(el => {
+        const aria = el.getAttribute('aria-label')?.trim();
+        const labelledBy = el.getAttribute('aria-labelledby')?.trim();
+        const labels = 'labels' in el ? [...(el.labels || [])].some(label => label.textContent?.trim()) : false;
+        const buttonText = el.tagName === 'BUTTON' && Boolean(el.textContent?.trim());
+        return !aria && !labelledBy && !labels && !buttonText;
+      }).map(el => el.outerHTML.slice(0, 180))
+    );
+    assert.deepEqual(unnamedControls, [],
+      'NexOffices USA has visible controls without accessible names at ' + width + 'px');
+    const brokenFragments = await page.locator('a[href^="#"]').evaluateAll(links =>
+      links.map(link => link.getAttribute('href')).filter(href =>
+        !href || href === '#' || !document.getElementById(href.slice(1)))
+    );
+    assert.deepEqual(brokenFragments, [],
+      'NexOffices USA has broken in-page navigation at ' + width + 'px');
     assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,nofollow');
     const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
     assert.match(csp, /connect-src 'none'/);
