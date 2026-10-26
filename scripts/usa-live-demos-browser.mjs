@@ -60,7 +60,22 @@ try {
     // These public staging pages contain fictional examples only; screenshots never include customer accounts.
     const slug = item.label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     await page.screenshot({ path: `artifacts/usa-review/${slug}-390px.png`, fullPage: true, animations: 'disabled' });
-    console.log('PASS: ' + item.label + ' -> ' + item.url);
+    // Also inspect each externally hosted demo at desktop width. A mobile-only
+    // screenshot cannot demonstrate responsive desktop layout or detect overflow.
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.getByRole('heading', { name: item.heading }).waitFor({ timeout: 20000 });
+    const desktopDimensions = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    assert.ok(desktopDimensions.content <= desktopDimensions.viewport + 2,
+      item.label + ': desktop horizontal overflow: ' + JSON.stringify(desktopDimensions));
+    assert.equal(await page.locator('html').getAttribute('lang'), 'en-US', item.label + ': desktop locale mismatch');
+    assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,nofollow', item.label + ': desktop indexing protection absent');
+    assert.deepEqual(runtimeErrors, [], item.label + ': desktop page errors');
+    assert.deepEqual(brazilianApiCalls, [], item.label + ': desktop unauthorized Brazilian API requests');
+    await page.screenshot({ path: `artifacts/usa-review/${slug}-1280px.png`, fullPage: true, animations: 'disabled' });
+    console.log('PASS: ' + item.label + ' mobile + desktop -> ' + item.url);
     await page.close();
   }
 } finally { await browser?.close(); }
