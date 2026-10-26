@@ -1,6 +1,7 @@
 /** Public-facing USA portfolio browser QA; local static files and no customer input. */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { mkdirSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { chromium } from 'playwright';
 
@@ -21,6 +22,7 @@ try {
   }
   assert.ok(running, 'Static preview failed to start');
   browser = await chromium.launch({ headless: true });
+  mkdirSync('artifacts/usa-review', { recursive: true });
   for (const width of [320, 390, 1280]) {
     const page = await browser.newPage({ viewport: { width, height: 850 } });
     const errors = [];
@@ -79,6 +81,8 @@ try {
     }
     assert.deepEqual(errors, [], 'USA corporate page runtime errors');
     assert.deepEqual(unexpectedRequests, [], 'Institutional USA preview must not contact unapproved APIs or remote hosts');
+    // Only the fictional-data institutional page is captured for human visual review.
+    await page.screenshot({ path: `artifacts/usa-review/institutional-${width}px.png`, fullPage: true, animations: 'disabled' });
     await page.close();
   }
   // Respect operating-system reduced-motion preferences; avoid forced smooth scrolling.
