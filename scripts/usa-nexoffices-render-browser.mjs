@@ -31,6 +31,8 @@ try {
     assert.equal(await page.locator('.avsp-list article').count(), 3);
     await page.getByRole('heading', {name:'Know exactly what needs review.'}).waitFor();
     assert.equal(await page.locator('.avdr-list article').count(), 3);
+    await page.getByRole('heading', {name:'Turn scattered signals into a next-step briefing.'}).waitFor();
+    assert.equal(await page.locator('.avcb-list article').count(), 0);
     if (width === 390) {
       await page.getByLabel('Task description').fill('Fictional staging QA task');
       await page.getByRole('button', {name:'Add sample task'}).click();
@@ -44,12 +46,19 @@ try {
       assert.equal(await page.locator('.avdr-list article').count(), 4);
       await page.getByLabel('Sample legal-review checklist review stage').selectOption('In review');
       await page.getByText('Sample legal-review checklist: Draft → In review').waitFor();
+      await page.getByLabel('Sample team focus').selectOption('Documents');
+      await page.getByRole('button', {name:'Prepare sample brief'}).click();
+      await page.getByText('Documents sample briefing').waitFor();
+      assert.equal(await page.locator('.avcb-list article').count(), 2);
+      await page.getByRole('button', {name:'Mark Review the sample service proposal as reviewed'}).click();
+      await page.getByText('1 of 2 reviewed').waitFor();
       await page.reload({waitUntil:'domcontentloaded'});
       await page.getByRole('heading', {name:'Keep every next step visible.'}).waitFor();
       assert.equal(await page.locator('.avnw-list article').count(), 3, 'Task demo must not persist');
       assert.equal(await page.locator('.avsp-list article').count(), 3, 'CRM demo must not persist');
       assert.equal(await page.locator('.avdr-list article').count(), 3, 'Document review demo must not persist');
       assert.equal(await page.locator('.avdr-activity li').count(), 0, 'Review activity cannot persist');
+      assert.equal(await page.locator('.avcb-list article').count(), 0, 'Sample coordination brief cannot persist');
     }
     const viewport = await page.evaluate(() => document.documentElement.clientWidth);
     const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
