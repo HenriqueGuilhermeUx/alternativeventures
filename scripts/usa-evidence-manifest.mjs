@@ -1,4 +1,4 @@
-/** Fail closed if the nine fictional-data review screenshots are incomplete.
+/** Fail closed if the thirteen fictional-data review screenshots are incomplete.
  * Record integrity hashes and dimensions so a reviewer can trace the exact CI artifact.
  */
 import assert from 'node:assert/strict';
@@ -12,14 +12,18 @@ const expected = [
   ['institutional-390px.png', 390],
   ['institutional-1280px.png', 1280],
   ['modo-usa-390px.png', 390],
+  ['modo-usa-1280px.png', 1280],
   ['smartbots-usa-390px.png', 390],
+  ['smartbots-usa-1280px.png', 1280],
   ['docwallet-usa-390px.png', 390],
+  ['docwallet-usa-1280px.png', 1280],
   ['f-insight-usa-390px.png', 390],
+  ['f-insight-usa-1280px.png', 1280],
   ['nexoffices-390px.png', 390],
   ['nexoffices-1280px.png', 1280],
 ];
 const files = readdirSync(directory).filter(name => name.endsWith('.png')).sort();
-assert.deepEqual(files, expected.map(([name]) => name).sort(), 'Expected exactly nine USA demo screenshots');
+assert.deepEqual(files, expected.map(([name]) => name).sort(), 'Expected exactly thirteen USA demo screenshots');
 const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 const captures = expected.map(([name, viewportWidth]) => {
   const bytes = readFileSync(join(directory, name));
