@@ -126,6 +126,16 @@ try {
       assert.equal(await page.getByLabel('Stocks allocation (%)').inputValue(), '50',
         'F-Insight must restore its fictional defaults');
     }
+    // Functional demo interactions must not trigger real submission endpoints.
+    // Network guards above cover the entire interaction, including asynchronous requests.
+    const afterAction = await page.evaluate(() => ({
+      locale: document.documentElement.lang,
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    assert.equal(afterAction.locale, 'en-US', item.label + ': workflow switched locale');
+    assert.ok(afterAction.content <= afterAction.viewport + 2,
+      item.label + ': interactive workflow introduced horizontal overflow: ' + JSON.stringify(afterAction));
     assert.deepEqual(runtimeErrors, [], item.label + ': interactive demo runtime errors');
     assert.deepEqual(brazilianApiCalls, [], item.label + ': interactive demo attempted forbidden backend requests');
     console.log('PASS: ' + item.label + ' 320px + 390px + 1280px -> ' + item.url);
