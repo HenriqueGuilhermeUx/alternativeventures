@@ -39,6 +39,15 @@ try {
     await page.getByRole('heading', { name: /Build what matters/i }).waitFor();
     assert.equal(await page.locator('html').getAttribute('lang'), 'en-US');
     assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,nofollow');
+    // Browser-level guard: verify that the deployed HTML exposes the same
+    // deny-by-default policy as the static contract, on every screen size.
+    const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
+    assert.ok(csp, 'Institutional preview must publish a CSP');
+    for (const directive of ["script-src 'none'", "connect-src 'none'", "form-action 'none'", "object-src 'none'", "frame-src 'none'", "base-uri 'none'"]) {
+      assert.ok(csp.split(';').map(x => x.trim()).includes(directive),
+        'Institutional preview CSP missing ' + directive);
+    }
+
     assert.equal(await page.locator('article.card').count(), 5);
     // A portfolio preview must remain informational: no collection surfaces,
     // browser persistence, or account-creation controls are permitted here.
