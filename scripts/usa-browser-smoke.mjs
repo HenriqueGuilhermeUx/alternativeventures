@@ -100,6 +100,17 @@ try {
       assert.match(link.rel, /nofollow/);
     }
     assert.ok(await page.getByRole('link', {name:/Open NexOffices USA interactive preview/}).isVisible());
+    // Text-only zoom is a critical narrow-screen accessibility regression check.
+    // Do not assert font metrics: enforce usable navigation and zero horizontal scroll.
+    if (width === 320) {
+      await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+      const scaledWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+      const scaledViewport = await page.evaluate(() => document.documentElement.clientWidth);
+      assert.ok(scaledWidth <= scaledViewport + 2,
+        '200% root text scaling must not create horizontal overflow: ' + scaledWidth);
+      assert.ok(await page.getByRole('link', { name: 'Products', exact: true }).isVisible(),
+        'Products navigation must remain visible after text scaling');
+    }
     const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
     const contentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     assert.ok(contentWidth <= viewportWidth + 2, 'Horizontal overflow at viewport ' + width + ': ' + contentWidth);
