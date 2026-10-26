@@ -21,10 +21,18 @@ try {
   }
   assert.ok(running, 'Static preview failed to start');
   browser = await chromium.launch({ headless: true });
-  for (const width of [390, 1280]) {
+  for (const width of [320, 390, 1280]) {
     const page = await browser.newPage({ viewport: { width, height: 850 } });
     const errors = [];
+    const unexpectedRequests = [];
     page.on('pageerror', error => errors.push(error.message));
+    page.on('request', request => {
+      const url = new URL(request.url());
+      const allowedFontHosts = ['fonts.googleapis.com', 'fonts.gstatic.com'];
+      if (url.origin !== base && !allowedFontHosts.includes(url.hostname)) {
+        unexpectedRequests.push(url.href);
+      }
+    });
     await page.goto(base + '/us/', { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.getByRole('heading', { name: /Build what matters/i }).waitFor();
     assert.equal(await page.locator('html').getAttribute('lang'), 'en-US');
@@ -54,17 +62,19 @@ try {
     const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
     const contentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     assert.ok(contentWidth <= viewportWidth + 2, 'Horizontal overflow at viewport ' + width + ': ' + contentWidth);
-    if (width === 390) {
+    if (width === 320) {
       await page.keyboard.press('Tab');
       const focused = await page.locator(':focus').getAttribute('class');
       assert.equal(focused, 'skip-link');
       await page.keyboard.press('Enter');
       assert.equal(new URL(page.url()).hash, '#main-content');
+      assert.ok(await page.locator('#main-content').evaluate(element => document.activeElement === element), 'Skip link must move keyboard focus to main content');
     }
     assert.deepEqual(errors, [], 'USA corporate page runtime errors');
+    assert.deepEqual(unexpectedRequests, [], 'Institutional USA preview must not contact unapproved APIs or remote hosts');
     await page.close();
   }
-  console.log('PASS: institutional USA mobile/desktop browser QA, accessible navigation, stage-only demo links');
+  console.log('PASS: institutional USA 320/390/1280px browser QA, keyboard focus, approved-only network requests and staging links');
 } finally {
   await browser?.close();
   server.kill('SIGTERM');
