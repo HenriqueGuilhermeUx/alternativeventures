@@ -97,7 +97,40 @@ try {
   await reduced.goto(base + '/us/', { waitUntil: 'domcontentloaded' });
   assert.equal(await reduced.locator('html').evaluate(element => getComputedStyle(element).scrollBehavior), 'auto');
   await reduced.close();
-  console.log('PASS: institutional USA 320/390/1280px browser QA, refresh, reduced motion, keyboard focus, approved-only network requests and staging links');
+  // Windows high-contrast mode: all five staging links must be reachable by
+  // keyboard in document order, with a visible focus indicator.
+  const contrast = await browser.newPage({
+    viewport: { width: 390, height: 850 },
+    forcedColors: 'active',
+  });
+  await contrast.goto(base + '/us/', { waitUntil: 'domcontentloaded' });
+  await contrast.getByRole('heading', { name: /Build what matters/i }).waitFor();
+  const expectedKeyboardLinks = await contrast.locator('a.product-demo-link').evaluateAll(
+    links => links.map(link => link.getAttribute('href'))
+  );
+  const focusedKeyboardLinks = [];
+  for (let tab = 0; tab < 20 && focusedKeyboardLinks.length < 5; tab++) {
+    await contrast.keyboard.press('Tab');
+    const focus = await contrast.evaluate(() => {
+      const element = document.activeElement;
+      const style = getComputedStyle(element);
+      return {
+        className: element.className,
+        href: element.getAttribute('href'),
+        outlineStyle: style.outlineStyle,
+        outlineWidth: parseFloat(style.outlineWidth),
+      };
+    });
+    if (focus.className === 'product-demo-link') {
+      assert.equal(focus.outlineStyle, 'solid', 'High-contrast demo link needs a solid keyboard focus ring');
+      assert.ok(focus.outlineWidth >= 3, 'High-contrast demo link focus ring must be at least 3px');
+      focusedKeyboardLinks.push(focus.href);
+    }
+  }
+  assert.deepEqual(focusedKeyboardLinks, expectedKeyboardLinks,
+    'All five USA demos must be keyboard reachable in order in forced-colors mode');
+  await contrast.close();
+  console.log('PASS: institutional USA 320/390/1280px browser QA, refresh, reduced motion, keyboard focus, forced-colors keyboard navigation, approved-only network requests and staging links');
 } finally {
   await browser?.close();
   server.kill('SIGTERM');
