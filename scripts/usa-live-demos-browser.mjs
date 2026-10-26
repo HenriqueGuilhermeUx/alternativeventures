@@ -40,6 +40,24 @@ try {
     await page.getByRole('heading',{name:item.heading}).waitFor({timeout:20000});
     assert.equal(await page.locator('html').getAttribute('lang'), 'en-US', item.label + ': locale mismatch');
     assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,nofollow', item.label + ': indexing protection absent');
+    // Review semantic accessibility on the real deployed US preview, not just
+    // screenshots. This is a regression gate, not a substitute for human WCAG QA.
+    assert.equal(await page.getByRole('main').count(), 1,
+      item.label + ': expected exactly one main landmark');
+    assert.equal(await page.getByRole('heading', { level: 1 }).count(), 1,
+      item.label + ': expected exactly one page h1');
+    assert.ok((await page.title()).trim().length >= 8,
+      item.label + ': missing meaningful browser title');
+    const unnamedControls = await page.locator('input:not([type="hidden"]), select, textarea, button').evaluateAll(controls =>
+      controls.filter(el => el.getClientRects().length > 0).filter(el => {
+        const aria = el.getAttribute('aria-label')?.trim();
+        const labelledBy = el.getAttribute('aria-labelledby')?.trim();
+        const labels = 'labels' in el ? [...(el.labels || [])].some(label => label.textContent?.trim()) : false;
+        const text = el.tagName === 'BUTTON' && Boolean(el.textContent?.trim());
+        return !aria && !labelledBy && !labels && !text;
+      }).map(el => el.outerHTML.slice(0, 180))
+    );
+    assert.deepEqual(unnamedControls, [], item.label + ': visible form controls missing accessible names');
     assert.deepEqual(runtimeErrors, [], item.label + ': page errors');
     assert.deepEqual(brazilianApiCalls, [], item.label + ': unauthorized Brazilian API requests');
     // A direct refresh of every externally hosted /us route must stay in the English demo,
