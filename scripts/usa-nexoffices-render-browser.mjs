@@ -33,17 +33,24 @@ try {
     assert.equal(await page.locator('.avdr-list article').count(), 3);
     await page.getByRole('heading', {name:'Turn scattered signals into a next-step briefing.'}).waitFor();
     assert.equal(await page.locator('.avcb-list article').count(), 0);
+    await page.getByRole('heading', {name:'One activity feed across the workspace.'}).waitFor();
+    assert.equal(await page.locator('.avhub-events article').count(), 0);
     if (width === 390) {
       await page.getByLabel('Task description').fill('Fictional staging QA task');
       await page.getByRole('button', {name:'Add sample task'}).click();
       assert.equal(await page.locator('.avnw-list article').count(), 4);
+      assert.ok((await page.locator('.avhub-events article').count()) >= 1, 'Task activity must appear in shared activity feed');
       await page.getByLabel('Opportunity title').fill('Fictional staging QA opportunity');
       await page.getByLabel('Fictional organization').fill('Example LLC');
       await page.getByRole('button', {name:'Add sample opportunity'}).click();
       assert.equal(await page.locator('.avsp-list article').count(), 4);
+      assert.ok((await page.locator('.avhub-events article').count()) >= 2, 'CRM updates must appear in shared activity feed');
       await page.getByLabel('Fictional document title').fill('Sample legal-review checklist');
       await page.getByRole('button', {name:'Add sample document'}).click();
       assert.equal(await page.locator('.avdr-list article').count(), 4);
+      await page.getByLabel('Filter demo activity').selectOption('Documents');
+      assert.ok((await page.locator('.avhub-events article').count()) >= 1, 'Document workflow must update filtered activity feed');
+      await page.getByLabel('Filter demo activity').selectOption('All');
       await page.getByLabel('Sample legal-review checklist review stage').selectOption('In review');
       await page.getByText('Sample legal-review checklist: Draft → In review').waitFor();
       await page.getByLabel('Sample team focus').selectOption('Documents');
@@ -59,6 +66,7 @@ try {
       assert.equal(await page.locator('.avdr-list article').count(), 3, 'Document review demo must not persist');
       assert.equal(await page.locator('.avdr-activity li').count(), 0, 'Review activity cannot persist');
       assert.equal(await page.locator('.avcb-list article').count(), 0, 'Sample coordination brief cannot persist');
+      assert.equal(await page.locator('.avhub-events article').count(), 0, 'Cross-module activity cannot persist');
     }
     const viewport = await page.evaluate(() => document.documentElement.clientWidth);
     const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
