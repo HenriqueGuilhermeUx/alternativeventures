@@ -136,6 +136,32 @@ try {
     assert.equal(afterAction.locale, 'en-US', item.label + ': workflow switched locale');
     assert.ok(afterAction.content <= afterAction.viewport + 2,
       item.label + ': interactive workflow introduced horizontal overflow: ' + JSON.stringify(afterAction));
+    // A fictional workflow must never become a persistent customer record.
+    // Reload the actual published preview after each interaction and verify
+    // the initial state is restored without contacting any production API.
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.getByRole('heading', { name: item.heading }).waitFor({ timeout: 20000 });
+    assert.equal(await page.locator('html').getAttribute('lang'), 'en-US',
+      item.label + ': reload after interaction lost the US locale');
+    if (item.label === 'MODO USA') {
+      assert.equal(await page.getByText('Sample plan generated locally with predefined rules. No AI request was made.').count(), 0,
+        'MODO fictional generated plan must not survive reload');
+    } else if (item.label === 'SmartBots USA') {
+      assert.equal(await page.getByRole('button', { name: /Sample: Avery/i }).count(), 0,
+        'SmartBots fictional lead must not survive reload');
+    } else if (item.label === 'DocWallet USA') {
+      assert.equal((await page.locator('.avus-grid article').nth(1).locator('h3').innerText()).trim(), '2',
+        'DocWallet fictional review queue must return to its initial state after reload');
+    } else if (item.label === 'F-Insight USA') {
+      assert.equal(await page.getByLabel('Stocks allocation (%)').inputValue(), '50',
+        'F-Insight hypothetical allocation must not survive reload');
+    }
+    const postReloadDimensions = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    assert.ok(postReloadDimensions.content <= postReloadDimensions.viewport + 2,
+      item.label + ': post-workflow reload introduced horizontal overflow: ' + JSON.stringify(postReloadDimensions));
     assert.deepEqual(runtimeErrors, [], item.label + ': interactive demo runtime errors');
     assert.deepEqual(brazilianApiCalls, [], item.label + ': interactive demo attempted forbidden backend requests');
     console.log('PASS: ' + item.label + ' 320px + 390px + 1280px -> ' + item.url);
