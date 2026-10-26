@@ -42,6 +42,21 @@ try {
     assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,nofollow', item.label + ': indexing protection absent');
     assert.deepEqual(runtimeErrors, [], item.label + ': page errors');
     assert.deepEqual(brazilianApiCalls, [], item.label + ': unauthorized Brazilian API requests');
+    // A direct refresh of every externally hosted /us route must stay in the English demo,
+    // not fall through to a Brazilian application or a generic hosting error page.
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 45000 });
+    await page.getByRole('heading', { name: item.heading }).waitFor({ timeout: 20000 });
+    assert.ok(new URL(page.url()).pathname.startsWith('/us'), item.label + ': refresh escaped the US route');
+    assert.equal(await page.locator('html').getAttribute('lang'), 'en-US', item.label + ': refresh lost en-US');
+    assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,nofollow', item.label + ': refresh lost noindex');
+    const dimensions = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    assert.ok(dimensions.content <= dimensions.viewport + 2,
+      item.label + ': horizontal overflow after refresh: ' + JSON.stringify(dimensions));
+    assert.deepEqual(runtimeErrors, [], item.label + ': page errors after refresh');
+    assert.deepEqual(brazilianApiCalls, [], item.label + ': unauthorized requests after refresh');
     // These public staging pages contain fictional examples only; screenshots never include customer accounts.
     const slug = item.label.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     await page.screenshot({ path: `artifacts/usa-review/${slug}-390px.png`, fullPage: true, animations: 'disabled' });
