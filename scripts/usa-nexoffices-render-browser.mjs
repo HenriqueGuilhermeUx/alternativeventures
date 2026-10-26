@@ -10,7 +10,7 @@ let browser;
 try {
   browser = await chromium.launch({headless: true});
   mkdirSync('artifacts/usa-review', { recursive: true });
-  for (const width of [390, 1280]) {
+  for (const width of [320, 390, 1280]) {
     const page = await browser.newPage({viewport: {width, height: 844}});
     const errors = [], forbiddenRequests = [];
     page.on('pageerror', e => errors.push(e.message));
@@ -75,7 +75,7 @@ try {
     assert.ok(scroll <= viewport + 2, 'Horizontal overflow at ' + width + ': ' + scroll);
     assert.deepEqual(errors, [], 'Runtime errors at ' + width);
     assert.deepEqual(forbiddenRequests, [], 'Unexpected external/API request at ' + width);
-    // Mobile screenshots are taken after reload has discarded all fictional test edits.
+    // Mobile screenshots are taken without any user data; 390px is reloaded to discard all fictional test edits.
     await page.screenshot({ path: `artifacts/usa-review/nexoffices-${width}px.png`, fullPage: true, animations: 'disabled' });
     console.log('PASS: isolated NexOffices USA Render staging ' + width + 'px; interactive fictional data, no persistence, no network');
     await page.close();
