@@ -30,3 +30,11 @@ jobs:
         run: node scripts/usa-live-demos-browser.mjs
       - name: Verify separate NexOffices USA Render staging
         run: node scripts/usa-nexoffices-render-browser.mjs
+      - name: Preserve fictional-data screenshots for manual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usa-portfolio-visual-evidence
+          path: artifacts/usa-review/*.png
+          if-no-files-found: warn
+          retention-days: 7
