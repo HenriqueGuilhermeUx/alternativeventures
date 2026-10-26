@@ -51,6 +51,17 @@ try {
       assert.ok(link.href && link.href !== '#', 'Navigation link has an empty or placeholder destination');
       assert.ok(link.name.length > 0, 'Navigation link is missing an accessible name: ' + link.href);
     }
+    // Validate that all local fragment links resolve to real targets and that
+    // staging links cannot silently downgrade to HTTP or unknown destinations.
+    const navigationTargets = await page.locator('a').evaluateAll(links => links.map(link => {
+      const href = link.getAttribute('href') || '';
+      return { href, exists: href.startsWith('#') ? Boolean(document.getElementById(href.slice(1))) : true };
+    }));
+    for (const target of navigationTargets) {
+      assert.ok(target.exists, 'Broken internal navigation fragment: ' + target.href);
+      assert.ok(target.href.startsWith('#') || target.href === '/' || target.href === '/us/' ||
+        target.href.startsWith('https://'), 'Unapproved link scheme or destination: ' + target.href);
+    }
     const allIds = await page.locator('[id]').evaluateAll(elements => elements.map(el => el.id));
     assert.equal(new Set(allIds).size, allIds.length, 'Duplicate DOM ids break label and fragment navigation');
 
@@ -106,6 +117,11 @@ try {
       await page.getByRole('heading', { name: /Build what matters/i }).waitFor();
       assert.equal(await page.locator('html').getAttribute('lang'), 'en-US');
       assert.equal(await page.locator('a.product-demo-link').count(), 5);
+      // Verify real in-page navigation after refresh, not just static href attributes.
+      await page.getByRole('link', { name: 'Products', exact: true }).click();
+      assert.equal(new URL(page.url()).hash, '#products', 'Products navigation must reach its section');
+      await page.getByRole('link', { name: 'Our approach', exact: true }).click();
+      assert.equal(new URL(page.url()).hash, '#approach', 'Approach navigation must reach its section');
     }
     assert.deepEqual(errors, [], 'USA corporate page runtime errors');
     assert.deepEqual(unexpectedRequests, [], 'Institutional USA preview must not contact unapproved APIs or remote hosts');
