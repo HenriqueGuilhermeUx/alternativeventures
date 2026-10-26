@@ -9,6 +9,23 @@ const brazil = read("site/index.html");
 const netlify = read("netlify.toml");
 assert.match(html, /<html lang="en-US">/, "US language missing");
 assert.match(html, /name="robots"\s+content="noindex,nofollow"/, "Preview must not be indexed");
+// Defense in depth: the informational /us/ page must be incapable of
+// executing JavaScript, calling APIs, submitting forms or embedding providers.
+// Font stylesheet origins are explicitly permitted; the Brazil site is untouched.
+const csp = html.match(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i)?.[1];
+assert.ok(csp, "USA preview Content Security Policy is missing");
+const directives = new Map(csp.split(";").map(x => x.trim()).filter(Boolean).map(x => {
+  const [name, ...sources] = x.split(/\s+/);
+  return [name, sources];
+}));
+for (const name of ["script-src", "connect-src", "form-action", "object-src", "frame-src", "base-uri"]) {
+  assert.deepEqual(directives.get(name), ["'none'"], "USA preview must deny " + name);
+}
+assert.deepEqual(directives.get("default-src"), ["'self'"], "Unexpected default CSP origin");
+assert.deepEqual(directives.get("img-src"), ["'self'", "data:"], "Unexpected image CSP origin");
+assert.deepEqual(directives.get("font-src"), ["'self'", "https://fonts.gstatic.com"], "Unexpected font CSP origin");
+assert.deepEqual(directives.get("style-src"), ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], "Unexpected style CSP origin");
+
 assert.match(html, /<title>Alternative Ventures USA/i);
 assert.match(html, /<a class="skip-link" href="#main-content">Skip to main content<\/a>/, "Keyboard skip link missing");
 assert.match(html, /<main id="main-content" tabindex="-1">/, "Skip link target must be focusable");
