@@ -66,6 +66,8 @@
       .primary,.secondary{background:Canvas;color:LinkText;border:1px solid LinkText}
       a:focus-visible{outline:3px solid Highlight;outline-offset:5px}
     }
+    /* Honor user-requested text scaling without forcing horizontal scrolling. */
+    @media(max-width:420px){.wordmark{letter-spacing:.12em}.wordmark strong{letter-spacing:.22em}.nav{gap:12px}h1{overflow-wrap:anywhere}}
     @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
   </style>
 </head>
