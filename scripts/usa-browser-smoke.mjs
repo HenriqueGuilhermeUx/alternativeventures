@@ -40,6 +40,22 @@ try {
     assert.equal(await page.locator('html').getAttribute('lang'), 'en-US');
     assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex,nofollow');
     assert.equal(await page.locator('article.card').count(), 5);
+    // A portfolio preview must remain informational: no collection surfaces,
+    // browser persistence, or account-creation controls are permitted here.
+    assert.equal(await page.locator('form, input, textarea, select').count(), 0,
+      'USA institutional preview must not collect visitor data');
+    const browserState = await page.evaluate(() => ({
+      local: localStorage.length,
+      session: sessionStorage.length,
+      cookies: document.cookie,
+      externalScripts: [...document.scripts].filter(script => script.src).map(script => script.src),
+    }));
+    assert.equal(browserState.local, 0, 'USA institutional preview must not write localStorage');
+    assert.equal(browserState.session, 0, 'USA institutional preview must not write sessionStorage');
+    assert.equal(browserState.cookies, '', 'USA institutional preview must not set readable cookies');
+    assert.deepEqual(browserState.externalScripts, [],
+      'USA institutional preview must not load external JavaScript');
+
     // Prevent inaccessible or ambiguous navigation as new US products are added.
     assert.equal(await page.getByRole('main').count(), 1, 'Exactly one main landmark is required');
     assert.equal(await page.getByRole('heading', { level: 1 }).count(), 1, 'Exactly one page h1 is required');
