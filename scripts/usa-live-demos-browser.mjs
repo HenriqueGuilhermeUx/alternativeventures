@@ -36,7 +36,7 @@ try {
       const preview = new URL(item.url);
       const readOnly = request.method() === 'GET' || request.method() === 'HEAD';
       const samePreview = u.origin === preview.origin;
-      const previewBackend = /^\\/(?:api\\/|\\.netlify\\/(?:functions|edge-functions)\\/)/.test(u.pathname);
+      const previewBackend = /^\/(?:api\/|\.netlify\/(?:functions|edge-functions)\/)/.test(u.pathname);
       const toolbar = u.protocol === 'https:' && u.hostname === 'app.netlify.com';
       const fontAsset = u.protocol === 'https:' && readOnly &&
         ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(u.hostname);
