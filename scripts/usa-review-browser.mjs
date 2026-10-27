@@ -47,6 +47,29 @@ try {
     assert.ok(response?.ok(), 'Offline gallery HTML is unavailable');
     assert.equal(await page.locator('html').getAttribute('lang'), 'en-US');
     assert.equal(await page.getByRole('main').count(), 1);
+    assert.equal(await page.getByRole('main').getAttribute('tabindex'), '-1',
+      'Skip-link main target must accept keyboard focus');
+    assert.equal(await page.locator('a.skip').getAttribute('href'), '#main');
+    const reportNames = [
+      'manifest.json', 'release-readiness.json', 'netlify-status-evidence.json',
+      'nexoffices-render-provenance.json', 'nexoffices-shared-ci-debts.json',
+    ];
+    const evidenceLinks = await page.locator('a.evidence-link').evaluateAll(links =>
+      links.map(link => ({ href: link.getAttribute('href'), name: link.textContent.trim() })));
+    assert.deepEqual(evidenceLinks.map(link => link.href), reportNames,
+      'Offline gallery must link to all five local review evidence files');
+    for (const link of evidenceLinks) {
+      assert.ok(link.name.length > 8, 'Evidence links need descriptive accessible names');
+      const reportResponse = await page.request.get(base + '/' + link.href);
+      assert.ok(reportResponse.ok(), 'Evidence file is missing: ' + link.href);
+      const report = await reportResponse.json();
+      assert.equal(report.schema_version, 1, 'Invalid evidence report: ' + link.href);
+      if (link.href === 'release-readiness.json') {
+        assert.equal(report.decision, 'not-approved', 'Review gallery must not claim release approval');
+        assert.equal(report.institutional_pr_head_sha, manifest.pr_head_sha,
+          'Release decision must match the screenshot HEAD');
+      }
+    }
     assert.equal(await page.getByRole('heading', { level: 1 }).count(), 1);
     assert.equal(await page.locator('section[aria-labelledby]').count(), 6);
     assert.equal(await page.locator('figure').count(), 18);
