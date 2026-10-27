@@ -7,6 +7,7 @@ on:
       - 'scripts/usa-browser-smoke.mjs'
       - 'scripts/usa-live-demos-browser.mjs'
       - 'scripts/usa-nexoffices-render-browser.mjs'
+      - 'scripts/usa-render-provenance-audit.mjs'
       - 'scripts/usa-evidence-manifest.mjs'
       - 'scripts/usa-review-index.mjs'
       - 'scripts/usa-review-browser.mjs'
@@ -37,6 +38,12 @@ jobs:
         run: node scripts/usa-live-demos-browser.mjs
       - name: Verify separate NexOffices USA Render staging
         run: node scripts/usa-nexoffices-render-browser.mjs
+      - name: Record read-only NexOffices Render provenance against live PR HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/usa-render-provenance-audit.mjs --self-test
+          node scripts/usa-render-provenance-audit.mjs
       - name: Verify screenshots and generate SHA-256 review manifest
         env:
           USA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -53,6 +60,7 @@ jobs:
           path: |
             artifacts/usa-review/*.png
             artifacts/usa-review/manifest.json
+            artifacts/usa-review/nexoffices-render-provenance.json
             artifacts/usa-review/review.html
           if-no-files-found: error
           retention-days: 7
