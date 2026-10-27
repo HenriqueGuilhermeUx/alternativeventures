@@ -24,6 +24,7 @@ try {
     const page = await browser.newPage({viewport:{width:390,height:844}});
     const runtimeErrors = [];
     const brazilianApiCalls = [];
+    const blockedPreviewTelemetry = [];
     page.on('pageerror', error => runtimeErrors.push(error.message));
     // Fail closed *before* an accidental real request can reach a provider.
     // The previews are static, synthetic demos: no POSTs, backend endpoints,
@@ -40,6 +41,18 @@ try {
       const toolbar = u.protocol === 'https:' && u.hostname === 'app.netlify.com';
       const fontAsset = u.protocol === 'https:' && readOnly &&
         ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(u.hostname);
+      // Netlify-hosted previews can inject Segment/Bugsnag instrumentation.
+      // Abort these known telemetry calls before transmission, record them
+      // separately, and keep all unknown external/provider calls as failures.
+      const previewTelemetry = u.protocol === 'https:' && (
+        (readOnly && u.hostname === 'cdn.segment.com' && u.pathname.startsWith('/analytics.js/')) ||
+        (request.method() === 'POST' && u.hostname === 'sessions.bugsnag.com' && u.pathname === '/')
+      );
+      if (previewTelemetry) {
+        blockedPreviewTelemetry.push(request.method() + ' ' + u.href);
+        await route.abort('blockedbyclient');
+        return;
+      }
       const forbidden = samePreview ? (!readOnly || previewBackend) : !(toolbar || fontAsset);
       if (forbidden) {
         brazilianApiCalls.push(request.method() + ' ' + u.href);
@@ -209,7 +222,8 @@ try {
       item.label + ': post-workflow reload introduced horizontal overflow: ' + JSON.stringify(postReloadDimensions));
     assert.deepEqual(runtimeErrors, [], item.label + ': interactive demo runtime errors');
     assert.deepEqual(brazilianApiCalls, [], item.label + ': interactive demo attempted forbidden backend requests');
-    console.log('PASS: ' + item.label + ' 320px + 390px + 1280px -> ' + item.url);
+    console.log('PASS: ' + item.label + ' 320px + 390px + 1280px -> ' + item.url +
+      '; preview telemetry requests blocked before transmission: ' + blockedPreviewTelemetry.length);
     await page.close();
   }
 } finally { await browser?.close(); }
