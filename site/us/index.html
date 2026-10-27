@@ -7,13 +7,10 @@
   <meta name="description" content="Alternative Ventures USA: a preview of AI-powered business, marketing, document, and financial intelligence products being localized for the United States." />
   <meta name="robots" content="noindex,nofollow" />
   <!-- Demo-only page: prohibit scripts, network connections, forms and embedded providers. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'" />
   <title>Alternative Ventures USA — Product Localization Preview</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   <style>
-    :root{--bg:#040713;--ink:#f8faff;--muted:#adbbd4;--line:rgba(255,255,255,.13);--accent:#35d5ff;--mint:#31e6a5;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark}
+    :root{--bg:#040713;--ink:#f8faff;--muted:#adbbd4;--line:rgba(255,255,255,.13);--accent:#35d5ff;--mint:#31e6a5;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark}
     *,*::before,*::after{box-sizing:border-box}
     html{scroll-behavior:smooth}
     body{margin:0;min-height:100vh;color:var(--ink);background:radial-gradient(ellipse at 85% 9%,rgba(53,213,255,.16),transparent 35%),radial-gradient(ellipse at 15% 0,rgba(79,140,255,.23),transparent 38%),linear-gradient(180deg,var(--bg),#080c1e 70%,var(--bg))}
@@ -28,7 +25,7 @@
     .wordmark strong{font-size:12px;color:var(--accent);letter-spacing:.4em;margin-top:6px}
     .nav{display:flex;gap:22px;align-items:center;flex-wrap:wrap;font-size:13px;font-weight:700;color:#cdd9ed}
     .nav a{display:inline-flex;align-items:center;min-height:44px;padding:8px 0}
-    .eyebrow{display:inline-flex;align-items:center;gap:10px;letter-spacing:.12em;text-transform:uppercase;font:600 11px "JetBrains Mono",monospace;color:var(--mint)}
+    .eyebrow{display:inline-flex;align-items:center;gap:10px;letter-spacing:.12em;text-transform:uppercase;font:600 11px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mint)}
     .eyebrow::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--mint);box-shadow:0 0 15px rgba(49,230,165,.6)}
     .hero{padding:105px 0 90px;max-width:900px}
     h1{font-size:clamp(49px,7.5vw,100px);line-height:.98;letter-spacing:-.077em;margin:26px 0 28px;font-weight:900}
@@ -45,7 +42,7 @@
     .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
     .card{position:relative;background:linear-gradient(145deg,rgba(255,255,255,.077),rgba(255,255,255,.025));border:1px solid var(--line);border-radius:22px;padding:30px;display:flex;flex-direction:column;min-height:270px;overflow:hidden}
     .card::after{content:"";position:absolute;width:220px;height:220px;border-radius:50%;right:-160px;top:-120px;pointer-events:none;background:var(--glow,rgba(53,213,255,.20));filter:blur(34px)}
-    .card small{font:700 11px "JetBrains Mono",monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--mint)}
+    .card small{font:700 11px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--mint)}
     .card h3{font-size:clamp(24px,2.4vw,30px);letter-spacing:-.04em;margin:24px 0 13px}
     .card p{color:#b6c4de;font-size:15px;line-height:1.7;margin:0 0 25px;max-width:490px}
     .card .tag{margin-top:auto;width:fit-content;border:1px solid rgba(255,255,255,.2);border-radius:999px;color:#d7e0f2;font-size:11px;font-weight:750;padding:8px 12px}
@@ -55,7 +52,7 @@
     .division{border-top:1px solid var(--line);margin-top:60px;padding:40px 0 65px}
     .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
     .step{padding:20px 0}
-    .step strong{color:var(--accent);font:800 12px "JetBrains Mono",monospace}
+    .step strong{color:var(--accent);font:800 12px ui-monospace,SFMono-Regular,Consolas,monospace}
     .step h3{font-size:20px;margin:13px 0}
     .step p{color:var(--muted);font-size:14px;line-height:1.65;margin:0}
     footer{border-top:1px solid var(--line);padding:25px 0 45px;display:flex;gap:18px;align-items:center;justify-content:space-between;color:#97a5c0;font-size:12px;flex-wrap:wrap}
