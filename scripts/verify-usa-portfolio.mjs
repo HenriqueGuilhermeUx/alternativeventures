@@ -35,13 +35,19 @@ assert.equal(new Set(sectionIds).size, sectionIds.length, "Duplicate section ids
 for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
   assert.ok(sectionIds.includes(target), "Broken in-page navigation target: " + target);
 }
-const demoAnchors = [...html.matchAll(/<a\b[^>]*class="product-demo-link"[^>]*>/g)].map(match => match[0]);
+const demoAnchors = [...html.matchAll(/(<a\b[^>]*class="product-demo-link"[^>]*>)([^<]+)<\/a>/g)];
 assert.equal(demoAnchors.length, 5, "Exactly five verified staging demo links are expected");
 assert.match(html, /<p class="demo-data-note" id="usa-demo-data-note">Fictional sample data only\./,
   "Visible fictional-data guidance is required before any USA demo links");
 assert.match(html, /Do not enter personal, customer, financial, or confidential information/,
   "Preview must warn reviewers against entering real information");
-for (const anchor of demoAnchors) {
+for (const [, anchor, visibleText] of demoAnchors) {
+  // WCAG 2.5.3: the accessible name must begin with the text users see,
+  // allowing voice-control users to activate the same demo link.
+  const visibleLabel = visibleText.replace(/\s*↗\s*$/u, '').trim();
+  const accessibleLabel = anchor.match(/aria-label="([^"]+)"/)?.[1] ?? '';
+  assert.ok(visibleLabel && accessibleLabel.startsWith(visibleLabel),
+    "Demo link accessible name must include its visible label: " + visibleLabel);
   assert.match(anchor, /aria-describedby="usa-demo-data-note(?: nexoffices-preview-note)?"/,
     "Each demo link must expose the fictional-data warning to assistive technology");
   assert.match(anchor, /target="_blank"/, "Staging demos must open in a separate tab");
