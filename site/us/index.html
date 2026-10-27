@@ -49,6 +49,7 @@
     .card.wide{grid-column:1/-1;min-height:230px}
     .product-demo-link{display:inline-flex;margin-top:16px;align-items:center;gap:6px;min-height:44px;color:#75e5ff;font-size:13px;font-weight:800;width:fit-content;border-bottom:1px solid rgba(117,229,255,.35);padding:8px 0}
     .product-demo-link:hover{color:#fff;border-color:#fff}
+    .demo-data-note{margin:0 0 24px;padding:15px 18px;border:1px solid rgba(53,213,255,.42);border-radius:12px;background:rgba(53,213,255,.07);color:#d7e5f6;font-size:14px;line-height:1.65}
     .card .demo-caveat{margin:12px 0 0;font-size:12px;line-height:1.6;color:#d2dcef}
     .division{border-top:1px solid var(--line);margin-top:60px;padding:40px 0 65px}
     .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
@@ -100,37 +101,38 @@
       <div class="eyebrow">Selected localization tracks</div>
       <h2>Existing technology.<br />A new market.</h2>
       <p class="section-intro">Our initial software localization effort focuses on five product experiences that can reuse significant parts of existing interfaces and workflows. These are product descriptions, not live US service offerings.</p>
+      <p class="demo-data-note" id="usa-demo-data-note">Fictional sample data only. Do not enter personal, customer, financial, or confidential information in these demos. No real accounts, submissions, or transactions are enabled.</p>
       <div class="grid">
         <article class="card" style="--glow:rgba(49,230,165,.22)">
           <small>Marketing intelligence</small><h3>MODO</h3>
           <p>AI-assisted brand planning, creative production, campaign organization and review workflows for small teams.</p>
           <span class="tag">English preview in development</span>
-          <a class="product-demo-link" href="https://deploy-preview-163--modo1.netlify.app/us/demo" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open MODO USA interactive preview in a new tab">Explore MODO USA demo ↗</a>
+          <a class="product-demo-link" href="https://deploy-preview-163--modo1.netlify.app/us/demo" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open MODO USA interactive preview in a new tab" aria-describedby="usa-demo-data-note">Explore MODO USA demo ↗</a>
         </article>
         <article class="card" style="--glow:rgba(79,140,255,.24)">
           <small>Conversational business tools</small><h3>SmartBots</h3>
           <p>Business mini-sites, assisted answers, lead capture, a lightweight CRM and follow-up drafts under human control.</p>
           <span class="tag">English preview in development</span>
-          <a class="product-demo-link" href="https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open SmartBots USA interactive preview in a new tab">Explore SmartBots USA demo ↗</a>
+          <a class="product-demo-link" href="https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open SmartBots USA interactive preview in a new tab" aria-describedby="usa-demo-data-note">Explore SmartBots USA demo ↗</a>
         </article>
         <article class="card" style="--glow:rgba(155,124,255,.28)">
           <small>Document operations</small><h3>DocWallet</h3>
           <p>Secure document organization, workflow automation, integrity evidence and document intelligence. US signature validity is a separate workstream.</p>
           <span class="tag">English preview in development</span>
-          <a class="product-demo-link" href="https://deploy-preview-12--docwallet.netlify.app/us/workspace" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open DocWallet USA interactive preview in a new tab">Explore DocWallet USA demo ↗</a>
+          <a class="product-demo-link" href="https://deploy-preview-12--docwallet.netlify.app/us/workspace" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open DocWallet USA interactive preview in a new tab" aria-describedby="usa-demo-data-note">Explore DocWallet USA demo ↗</a>
         </article>
         <article class="card" style="--glow:rgba(53,213,255,.28)">
           <small>Financial research software</small><h3>F-Insight</h3>
           <p>Research workflows, watchlists, indicators, analytical tools and professional reporting. US data licensing is not yet enabled.</p>
           <span class="tag">English preview in development</span>
-          <a class="product-demo-link" href="https://deploy-preview-26--f-insight.netlify.app/us" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open F-Insight USA interactive preview in a new tab">Explore F-Insight USA demo ↗</a>
+          <a class="product-demo-link" href="https://deploy-preview-26--f-insight.netlify.app/us" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open F-Insight USA interactive preview in a new tab" aria-describedby="usa-demo-data-note">Explore F-Insight USA demo ↗</a>
         </article>
         <article class="card wide" style="--glow:rgba(49,230,165,.22)">
           <small>Business operating system</small><h3>NexOffices</h3>
           <p>A command center connecting CRM, operations, documents, marketing and AI-assisted coordination. US accounting, payments and tax workflows require additional integration work.</p>
           <span class="tag">English preview in development</span>
           <p class="demo-caveat" id="nexoffices-preview-note">Staging-only preview. The published build may differ from the current review branch; verify its source commit before evaluating functionality. Not approved for production use.</p>
-          <a class="product-demo-link" href="https://nexoffices-usa-staging.onrender.com/us/" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open NexOffices USA interactive preview in a new tab" aria-describedby="nexoffices-preview-note">Explore NexOffices USA demo ↗</a>
+          <a class="product-demo-link" href="https://nexoffices-usa-staging.onrender.com/us/" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open NexOffices USA interactive preview in a new tab" aria-describedby="usa-demo-data-note nexoffices-preview-note">Explore NexOffices USA demo ↗</a>
         </article>
       </div>
     </section>
