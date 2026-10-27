@@ -145,6 +145,9 @@ try {
       assert.equal(focused, 'skip-link');
       await page.keyboard.press('Enter');
       assert.equal(new URL(page.url()).hash, '#main-content');
+      // Chromium may update the fragment before completing focus navigation.
+      // Wait for the actual keyboard focus transition; do not weaken the assertion.
+      await page.waitForFunction(() => document.activeElement?.id === 'main-content', null, { timeout: 5000 });
       assert.ok(await page.locator('#main-content').evaluate(element => document.activeElement === element), 'Skip link must move keyboard focus to main content');
     }
     if (width === 390) {
