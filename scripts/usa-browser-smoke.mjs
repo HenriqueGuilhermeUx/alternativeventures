@@ -101,6 +101,14 @@ try {
       links.map(element => ({ url: element.getAttribute('href'), target: element.getAttribute('target'), rel: element.getAttribute('rel') }))
     );
     assert.equal(demos.length, 5);
+    const sampleDataNotice = page.locator("#usa-demo-data-note");
+    assert.equal(await sampleDataNotice.count(), 1, "USA demo data warning must have one unique target");
+    assert.ok(await sampleDataNotice.isVisible(), "Fictional-data warning must be visible");
+    assert.match(await sampleDataNotice.innerText(), /Do not enter personal, customer, financial, or confidential information/i);
+    for (const link of await page.locator("a.product-demo-link").all()) {
+      const description = (await link.getAttribute("aria-describedby") || "").split(/\s+/);
+      assert.ok(description.includes("usa-demo-data-note"), "Demo link must reference the fictional-data warning");
+    }
     // WCAG-friendly touch targets: all five demo links must be at least 44px
     // tall and wide across narrow mobile and desktop viewports.
     for (const link of await page.locator('a.product-demo-link').all()) {
@@ -133,7 +141,7 @@ try {
     // Do not let a green preview status imply that the NexOffices Render staging
     // deploy matches the current PR. Expose the caveat visually and to AT.
     const nexOfficesLink = page.getByRole('link', { name: /Open NexOffices USA interactive preview/ });
-    assert.equal(await nexOfficesLink.getAttribute('aria-describedby'), 'nexoffices-preview-note');
+    assert.equal(await nexOfficesLink.getAttribute('aria-describedby'), 'usa-demo-data-note nexoffices-preview-note');
     const stagingCaveat = page.locator('#nexoffices-preview-note');
     assert.equal(await stagingCaveat.count(), 1, 'NexOffices staging caveat must have a unique id');
     assert.ok(await stagingCaveat.isVisible(), 'NexOffices provenance caveat must be visible');
