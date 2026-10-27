@@ -51,7 +51,65 @@ export function assessNetlify(manifest, evidence) {
   };
 }
 
-export function assess(manifest, provenance, netlify = null) {
+// The shared-BR debt audit must be bound to the same NexOffices PR HEAD as
+// the Render provenance report. Four red checks are never silently waived.
+const EXPECTED_SHARED_CI_DEBTS = [
+  ['DocWallet Workspace Experience V1', 92],
+  ['Product Discovery Onboarding V1', 93],
+  ['NextGen Financial Engine V1', 94],
+  ['Receiving Account Onboarding V1', 95],
+];
+const NEXOFFICE_RUN = /^https:\/\/github\.com\/HenriqueGuilhermeUx\/nexoffice\/actions\/runs\/[0-9]+$/;
+
+export function assessSharedCiDebts(provenance, evidence) {
+  const problems = [];
+  const failures = Array.isArray(evidence?.failures) ? evidence.failures : [];
+  if (evidence?.schema_version !== 1 || evidence?.pr_draft !== true ||
+      !SHA.test(evidence?.pr_head_sha || '') || !SHA.test(evidence?.base_sha || '') ||
+      evidence?.pr_head_sha?.toLowerCase() !==
+        String(provenance?.expected_pr_head_sha || '').toLowerCase() ||
+      evidence?.release_approved !== false || evidence?.legacy_status !== 'not-proven' ||
+      failures.length !== 4) {
+    problems.push('Missing, stale or invalid exact-HEAD NexOffices debt report');
+  }
+  for (const [workflow, issue] of EXPECTED_SHARED_CI_DEBTS) {
+    const matches = failures.filter(row => row?.workflow === workflow);
+    const row = matches[0];
+    if (matches.length !== 1 ||
+        row?.tracking_issue !==
+          'https://github.com/HenriqueGuilhermeUx/nexoffice/issues/' + issue ||
+        row?.exact_pr_head_verified !== true ||
+        row?.pr_run_conclusion !== 'failure' ||
+        !NEXOFFICE_RUN.test(row?.pr_run_url || '') ||
+        !['unverified-no-equivalent-base-run',
+          'requires-assertion-level-comparison'].includes(row?.baseline_classification) ||
+        (row?.base_run_url !== null && !NEXOFFICE_RUN.test(row?.base_run_url || '')) ||
+        (row?.base_run_url === null && row?.base_run_conclusion !== null) ||
+        (row?.base_run_url === null &&
+          row?.baseline_classification !== 'unverified-no-equivalent-base-run') ||
+        (row?.base_run_url !== null &&
+          row?.baseline_classification !== 'requires-assertion-level-comparison')) {
+      problems.push('Missing or inconsistent shared-BR failure: ' + workflow);
+    }
+  }
+  if (failures.some(row =>
+    !EXPECTED_SHARED_CI_DEBTS.some(([workflow]) => workflow === row?.workflow))) {
+    problems.push('Unexpected workflow in NexOffices debt report');
+  }
+  if (evidence?.exact_head_failed_count !== 4 ||
+      evidence?.equivalent_base_run_count !==
+        failures.filter(row => row?.base_run_url !== null).length) {
+    problems.push('Inconsistent failure or baseline counts');
+  }
+  return {
+    status: problems.length ? 'unverified' : 'four-failures-unresolved',
+    exact_head_failed_count: problems.length ? 0 : 4,
+    baseline_proven: false,
+    problems,
+  };
+}
+
+export function assess(manifest, provenance, netlify = null, ciDebts = null) {
   assert.equal(manifest.schema_version, 1, 'Unsupported screenshot manifest');
   assert.match(manifest.pr_head_sha, SHA, 'Invalid institutional PR HEAD');
   assert.equal(manifest.captures?.length, 18, 'Incomplete USA screenshot evidence');
@@ -61,6 +119,7 @@ export function assess(manifest, provenance, netlify = null) {
   assert.equal(provenance.pr, 'HenriqueGuilhermeUx/nexoffice#91', 'Unexpected Render PR');
   const reasons = [];
   const netlifyAssessment = assessNetlify(manifest, netlify);
+  const sharedCiAssessment = assessSharedCiDebts(provenance, ciDebts);
   if (netlifyAssessment.status !== 'github-status-success-only') {
     reasons.push('Netlify exact-HEAD preview status evidence is incomplete or inconsistent: ' +
       netlifyAssessment.problems.join('; '));
@@ -80,7 +139,12 @@ export function assess(manifest, provenance, netlify = null) {
   // Human sign-off and the shared Brazilian CI baseline cannot be inferred
   // from synthetic screenshots or a successful institutional CI workflow.
   reasons.push('Human accessibility and visual review has not been signed off');
-  reasons.push('Four NexOffices shared-product CI failures require separate baseline disposition');
+  if (sharedCiAssessment.status === 'unverified') {
+    reasons.push('NexOffices shared-product CI debt evidence is missing, stale or inconsistent: ' +
+      sharedCiAssessment.problems.join('; '));
+  } else {
+    reasons.push('Four NexOffices shared-product CI failures remain unclassified against baseline main');
+  }
   return {
     schema_version: 1,
     purpose: 'USA fictional-data demo release decision; no commercial authorization',
@@ -92,6 +156,9 @@ export function assess(manifest, provenance, netlify = null) {
     netlify_preview_status: netlifyAssessment.status,
     netlify_github_success_count: netlifyAssessment.github_status_success_count,
     netlify_independent_deploy_sha_verified: false,
+    nexoffices_shared_ci_debt_evidence: sharedCiAssessment.status,
+    nexoffices_exact_head_failed_checks: sharedCiAssessment.exact_head_failed_count,
+    nexoffices_shared_ci_baseline_proven: false,
     automated_artifact_evidence: 'available-for-review',
     decision: 'not-approved',
     reasons,
@@ -134,13 +201,45 @@ if (process.argv.includes('--self-test')) {
   assert.equal(assessNetlify(manifest, { ...netlify, previews: previews.map(p =>
     p.pr.endsWith('modo#163') ? { ...p, independently_verified_live_deploy_sha: true } : p) }).status, 'unverified');
   assert.equal(assessNetlify(manifest, null).status, 'unverified');
+  const ciDebts = {
+    schema_version: 1, pr_draft: true, pr_head_sha: sha, base_sha: 'b'.repeat(40),
+    release_approved: false, legacy_status: 'not-proven',
+    exact_head_failed_count: 4, equivalent_base_run_count: 0,
+    failures: EXPECTED_SHARED_CI_DEBTS.map(([workflow, issue], i) => ({
+      workflow, tracking_issue: 'https://github.com/HenriqueGuilhermeUx/nexoffice/issues/' + issue,
+      exact_pr_head_verified: true, pr_run_conclusion: 'failure',
+      pr_run_url: 'https://github.com/HenriqueGuilhermeUx/nexoffice/actions/runs/' + (100 + i),
+      base_run_url: null, base_run_conclusion: null,
+      baseline_classification: 'unverified-no-equivalent-base-run',
+    })),
+  };
+  assert.equal(assessSharedCiDebts(provenance, ciDebts).status, 'four-failures-unresolved');
+  assert.equal(assess(manifest, provenance, netlify, ciDebts).nexoffices_exact_head_failed_checks, 4);
+  assert.equal(assess(manifest, provenance, netlify, ciDebts).decision, 'not-approved');
+  assert.equal(assessSharedCiDebts(provenance, null).status, 'unverified');
+  assert.equal(assessSharedCiDebts(provenance, { ...ciDebts,
+    pr_head_sha: 'c'.repeat(40) }).status, 'unverified');
+  assert.equal(assessSharedCiDebts(provenance, { ...ciDebts,
+    exact_head_failed_count: 3 }).status, 'unverified');
+  assert.equal(assessSharedCiDebts(provenance, { ...ciDebts,
+    failures: [...ciDebts.failures.slice(0, 3), ciDebts.failures[0]] }).status, 'unverified');
+  assert.equal(assessSharedCiDebts(provenance, { ...ciDebts,
+    failures: ciDebts.failures.map((row, i) =>
+      i === 0 ? { ...row, pr_run_conclusion: 'success' } : row) }).status, 'unverified');
+  assert.equal(assessSharedCiDebts(provenance, { ...ciDebts,
+    failures: ciDebts.failures.map((row, i) =>
+      i === 0 ? { ...row, base_run_url: 'https://github.com/HenriqueGuilhermeUx/nexoffice/actions/runs/200',
+        base_run_conclusion: 'failure',
+        baseline_classification: 'requires-assertion-level-comparison' } : row),
+    equivalent_base_run_count: 1 }).status, 'four-failures-unresolved');
   console.log('PASS: USA release readiness rejects missing, duplicated, stale and pending Netlify evidence; GitHub green is never release approval');
 } else {
   const directory = 'artifacts/usa-review';
   const manifest = JSON.parse(readFileSync(`${directory}/manifest.json`, 'utf8'));
   const provenance = JSON.parse(readFileSync(`${directory}/nexoffices-render-provenance.json`, 'utf8'));
   const netlify = JSON.parse(readFileSync(`${directory}/netlify-status-evidence.json`, 'utf8'));
-  const report = assess(manifest, provenance, netlify);
+  const ciDebts = JSON.parse(readFileSync(`${directory}/nexoffices-shared-ci-debts.json`, 'utf8'));
+  const report = assess(manifest, provenance, netlify, ciDebts);
   writeFileSync(`${directory}/release-readiness.json`, JSON.stringify(report, null, 2) + '\n');
   assert.equal(report.decision, 'not-approved', 'Automated CI must not grant release approval');
   console.log('PASS: review evidence release decision recorded as NOT APPROVED (' +
