@@ -101,6 +101,19 @@ try {
       links.map(element => ({ url: element.getAttribute('href'), target: element.getAttribute('target'), rel: element.getAttribute('rel') }))
     );
     assert.equal(demos.length, 5);
+    // WCAG 2.5.3 (Label in Name): voice-control users must be able to
+    // speak the visible action to activate the corresponding preview.
+    const demoLabels = await page.locator('a.product-demo-link').evaluateAll(links =>
+      links.map(link => ({
+        visible: (link.textContent || '').replace(/\s*↗\s*$/u, '').trim(),
+        accessible: (link.getAttribute('aria-label') || '').trim(),
+      })));
+    for (const label of demoLabels) {
+      assert.ok(label.visible && label.accessible.startsWith(label.visible),
+        'Demo accessible name does not start with visible label: ' + label.visible);
+      assert.match(label.accessible, /opens in a new tab$/i,
+        'Demo link must announce that it opens a new tab');
+    }
     const sampleDataNotice = page.locator("#usa-demo-data-note");
     assert.equal(await sampleDataNotice.count(), 1, "USA demo data warning must have one unique target");
     assert.ok(await sampleDataNotice.isVisible(), "Fictional-data warning must be visible");
@@ -137,10 +150,10 @@ try {
       assert.match(link.rel, /noreferrer/);
       assert.match(link.rel, /nofollow/);
     }
-    assert.ok(await page.getByRole('link', {name:/Open NexOffices USA interactive preview/}).isVisible());
+    assert.ok(await page.getByRole('link', {name:/Explore NexOffices USA demo/}).isVisible());
     // Do not let a green preview status imply that the NexOffices Render staging
     // deploy matches the current PR. Expose the caveat visually and to AT.
-    const nexOfficesLink = page.getByRole('link', { name: /Open NexOffices USA interactive preview/ });
+    const nexOfficesLink = page.getByRole('link', { name: /Explore NexOffices USA demo/ });
     assert.equal(await nexOfficesLink.getAttribute('aria-describedby'), 'usa-demo-data-note nexoffices-preview-note');
     const stagingCaveat = page.locator('#nexoffices-preview-note');
     assert.equal(await stagingCaveat.count(), 1, 'NexOffices staging caveat must have a unique id');
