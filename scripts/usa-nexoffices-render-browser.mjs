@@ -14,10 +14,20 @@ try {
     const page = await browser.newPage({viewport: {width, height: 844}});
     const errors = [], forbiddenRequests = [];
     page.on('pageerror', e => errors.push(e.message));
-    page.on('request', request => {
+    // Block forbidden traffic before it leaves the synthetic staging browser.
+    // Observing a request after it was sent would be too late for a safety gate.
+    await page.route('**/*', async route => {
+      const request = route.request();
       const url = new URL(request.url());
-      const sameOrigin = url.origin === base;
-      if (!sameOrigin || url.pathname.startsWith('/api/')) forbiddenRequests.push(url.href);
+      const readOnly = request.method() === 'GET' || request.method() === 'HEAD';
+      const forbidden = url.origin !== base || !readOnly ||
+        url.pathname.startsWith('/api/') || url.pathname.startsWith('/.netlify/functions/');
+      if (forbidden) {
+        forbiddenRequests.push(request.method() + ' ' + url.href);
+        await route.abort('blockedbyclient');
+        return;
+      }
+      await route.continue();
     });
     const response = await page.goto(base + '/us/', {waitUntil: 'domcontentloaded', timeout: 60000});
     assert.ok(response?.ok(), 'Render USA /us/ is unavailable: ' + response?.status());
