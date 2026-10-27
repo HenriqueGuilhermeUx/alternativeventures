@@ -71,7 +71,10 @@ try {
       }
     }
     assert.equal(await page.getByRole('heading', { level: 1 }).count(), 1);
-    assert.equal(await page.locator('section[aria-labelledby]').count(), 6);
+    assert.equal(await page.locator('section[aria-labelledby]').count(), 7,
+      'Review includes one evidence section and six screenshot sections');
+    assert.equal(await page.locator('section[aria-labelledby]:has(figure)').count(), 6,
+      'Exactly six demo screenshot groups are required');
     assert.equal(await page.locator('figure').count(), 18);
     assert.equal(await page.locator('script, form, input, textarea').count(), 0);
     assert.ok((await page.locator('body').innerText()).includes(manifest.pr_head_sha),
