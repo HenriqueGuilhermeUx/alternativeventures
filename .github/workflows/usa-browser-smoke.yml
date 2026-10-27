@@ -10,6 +10,7 @@ on:
       - 'scripts/usa-render-provenance-audit.mjs'
       - 'scripts/usa-netlify-status-audit.mjs'
       - 'scripts/usa-release-readiness.mjs'
+      - 'scripts/usa-nexoffices-ci-debt-audit.mjs'
       - 'scripts/usa-evidence-manifest.mjs'
       - 'scripts/usa-review-index.mjs'
       - 'scripts/usa-review-browser.mjs'
@@ -52,6 +53,12 @@ jobs:
         run: |
           node scripts/usa-netlify-status-audit.mjs --self-test
           node scripts/usa-netlify-status-audit.mjs
+      - name: Record four separate NexOffices shared-BR CI debts against exact PR HEAD (read-only)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/usa-nexoffices-ci-debt-audit.mjs --self-test
+          node scripts/usa-nexoffices-ci-debt-audit.mjs
       - name: Verify screenshots and generate SHA-256 review manifest
         env:
           USA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -74,6 +81,7 @@ jobs:
             artifacts/usa-review/manifest.json
             artifacts/usa-review/nexoffices-render-provenance.json
             artifacts/usa-review/netlify-status-evidence.json
+            artifacts/usa-review/nexoffices-shared-ci-debts.json
             artifacts/usa-review/release-readiness.json
             artifacts/usa-review/review.html
           if-no-files-found: error
