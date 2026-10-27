@@ -232,6 +232,25 @@ try {
       item.label + ': 200% root text scaling introduced horizontal overflow: ' + JSON.stringify(enlarged));
     assert.ok(await page.getByRole('heading', { name: item.heading }).isVisible(),
       item.label + ': primary heading disappeared after 200% root text scaling');
+    // Test high-contrast/forced-color presentation and reduced motion on the
+    // actual preview, not merely on the local source. Keep the 200% text scale
+    // to catch compound accessibility regressions; no data or provider calls.
+    await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
+    const accessibleDimensions = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    assert.ok(accessibleDimensions.content <= accessibleDimensions.viewport + 2,
+      item.label + ': forced colors + reduced motion + 200% text caused horizontal overflow: ' +
+      JSON.stringify(accessibleDimensions));
+    assert.ok(await page.getByRole('heading', { name: item.heading }).isVisible(),
+      item.label + ': main heading hidden in forced-colors mode');
+    const focusTarget = page.locator('button:not([disabled]):visible, input:not([disabled]):visible, select:not([disabled]):visible, textarea:not([disabled]):visible').first();
+    assert.ok(await focusTarget.count(), item.label + ': no enabled, visible focusable demo control');
+    await focusTarget.focus();
+    assert.equal(await focusTarget.evaluate(el => document.activeElement === el), true,
+      item.label + ': visible demo control cannot receive focus in forced-colors mode');
+    await page.emulateMedia({ forcedColors: 'none', reducedMotion: 'no-preference' });
     assert.deepEqual(runtimeErrors, [], item.label + ': interactive demo runtime errors');
     assert.deepEqual(brazilianApiCalls, [], item.label + ': interactive demo attempted forbidden backend requests');
     console.log('PASS: ' + item.label + ' 320px + 390px + 1280px -> ' + item.url +
