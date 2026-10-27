@@ -27,7 +27,7 @@ for (const capture of manifest.captures) {
   assert.equal(createHash('sha256').update(bytes).digest('hex'), capture.sha256,
     `Evidence hash mismatch: ${capture.file}`);
   assert.equal(bytes.length, capture.size_bytes, `Evidence size mismatch: ${capture.file}`);
-  const width = Number(capture.file.match(/-(320|390|1280)px\\.png$/)?.[1]);
+  const width = Number(capture.file.match(/-(320|390|1280)px\.png$/)?.[1]);
   assert.equal(capture.viewport_width_px, width, `Viewport metadata mismatch: ${capture.file}`);
   assert.equal(capture.image_width_px, width, `Image width mismatch: ${capture.file}`);
   captures.set(capture.file, capture);
@@ -47,8 +47,8 @@ const sections = groups.map(([label, prefix]) => `
       <figcaption><strong>${width}px viewport</strong> · ${capture.image_height_px}px captured height<br>
         <code title="SHA-256 integrity hash">SHA-256: ${capture.sha256}</code></figcaption>
     </figure>`;
-  }).join('\\n')}</div>
-</section>`).join('\\n');
+  }).join('\n')}</div>
+</section>`).join('\n');
 const html = `<!doctype html>
 <html lang="en-US"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -79,9 +79,9 @@ Six demo surfaces · 18 screenshots · 320px, 390px and 1280px viewports.</p>
 <h2>Human review checklist — not yet signed off</h2>
 <ul><li>Readability, spacing, contrast and visible focus</li><li>Copy clarity, en-US terminology and fictional-data disclaimers</li><li>Responsive presentation and keyboard/screen-reader review in the actual previews</li><li>NexOffices Render deploy SHA and four separate Brazilian CI debts</li></ul>
 ${sections}
-</main></body></html>\\n`;
-assert.equal((html.match(/<img\\s/g) || []).length, 18, 'Gallery must include all screenshots');
-assert.ok(!/<script\\b/i.test(html), 'Offline gallery must not execute JavaScript');
-assert.ok(!/\\b(?:src|href)="https?:/i.test(html), 'Offline gallery must not request external assets');
+</main></body></html>\n`;
+assert.equal((html.match(/<img\s/g) || []).length, 18, 'Gallery must include all screenshots');
+assert.ok(!/<script\b/i.test(html), 'Offline gallery must not execute JavaScript');
+assert.ok(!/\b(?:src|href)="https?:/i.test(html), 'Offline gallery must not request external assets');
 writeFileSync(join(directory, 'review.html'), html);
 console.log(`PASS: offline USA review.html generated with ${captures.size} verified screenshots at HEAD ${manifest.pr_head_sha}`);
