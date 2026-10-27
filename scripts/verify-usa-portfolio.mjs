@@ -23,8 +23,8 @@ for (const name of ["script-src", "connect-src", "form-action", "object-src", "f
 }
 assert.deepEqual(directives.get("default-src"), ["'self'"], "Unexpected default CSP origin");
 assert.deepEqual(directives.get("img-src"), ["'self'", "data:"], "Unexpected image CSP origin");
-assert.deepEqual(directives.get("font-src"), ["'self'", "https://fonts.gstatic.com"], "Unexpected font CSP origin");
-assert.deepEqual(directives.get("style-src"), ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"], "Unexpected style CSP origin");
+assert.deepEqual(directives.get("font-src"), ["'self'"], "USA preview fonts must be same-origin only");
+assert.deepEqual(directives.get("style-src"), ["'self'", "'unsafe-inline'"], "USA preview styles must not allow remote hosts");
 
 assert.match(html, /<title>Alternative Ventures USA/i);
 assert.match(html, /<a class="skip-link" href="#main-content">Skip to main content<\/a>/, "Keyboard skip link missing");
@@ -75,12 +75,11 @@ const approvedDemoLinks = [
   "https://deploy-preview-26--f-insight.netlify.app/us",
   "https://nexoffices-usa-staging.onrender.com/us/",
 ];
-const approvedExternalLinks = new Set([
-  "https://fonts.googleapis.com",
-  "https://fonts.gstatic.com",
-  "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap",
-  ...approvedDemoLinks,
-]);
+const approvedExternalLinks = new Set(approvedDemoLinks);
+assert.ok(!/<link\b[^>]*\brel=["\'](?:preconnect|dns-prefetch|stylesheet)["\']/i.test(html),
+  "USA institutional preview must not preload or fetch remote stylesheets");
+assert.ok(!/@import\s+(?:url\s*\()?\s*["\']?https?:/i.test(html),
+  "USA institutional preview must not import remote CSS");
 const absoluteLinks = [...html.matchAll(/href=["'](https?:\/\/[^"']+)["']/gi)].map(match => match[1].replace(/&amp;/g, '&'));
 for (const link of absoluteLinks) {
   assert.ok(approvedExternalLinks.has(link), "Unexpected external link on USA preview: " + link);
