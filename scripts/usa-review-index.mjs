@@ -21,6 +21,23 @@ assert.match(manifest.pr_head_sha, /^[a-f0-9]{40}$/i, 'Review requires a full PR
 assert.equal(manifest.captures.length, 18, 'Review requires eighteen captures');
 assert.deepEqual(manifest.captures.map(item => item.file).sort(), [...expectedNames].sort(),
   'Review manifest does not contain the six approved demos at three viewports');
+const evidenceReports = [
+  ['Screenshot integrity manifest', 'manifest.json'],
+  ['Release readiness decision', 'release-readiness.json'],
+  ['Netlify exact-HEAD preview status', 'netlify-status-evidence.json'],
+  ['NexOffices Render provenance', 'nexoffices-render-provenance.json'],
+  ['NexOffices shared-product CI debts', 'nexoffices-shared-ci-debts.json'],
+];
+const reports = new Map(evidenceReports.map(([, filename]) =>
+  [filename, JSON.parse(readFileSync(join(directory, filename), 'utf8'))]));
+for (const [filename, report] of reports) {
+  assert.equal(report.schema_version, 1, 'Unsupported review report schema: ' + filename);
+}
+const readiness = reports.get('release-readiness.json');
+assert.equal(readiness.institutional_pr_head_sha, manifest.pr_head_sha,
+  'Release readiness must match screenshot evidence HEAD');
+assert.equal(readiness.decision, 'not-approved',
+  'The offline review must never imply automatic release approval');
 const captures = new Map();
 for (const capture of manifest.captures) {
   const bytes = readFileSync(join(directory, capture.file));
@@ -75,7 +92,14 @@ code{font-size:.7rem}section{margin:2rem 0}h2{border-bottom:1px solid GrayText;p
 <p>Institutional PR #3 HEAD: <code>${manifest.pr_head_sha}</code><br>
 Six demo surfaces · 18 screenshots · 320px, 390px and 1280px viewports.</p>
 <p>Open the images to inspect full resolution. The companion <code>manifest.json</code> contains SHA-256 hashes and CI provenance. This gallery works offline and contains no JavaScript, forms or remote assets.</p>
-</header><main id="main">
+</header><main id="main" tabindex="-1">
+<section aria-labelledby="evidence-heading">
+<h2 id="evidence-heading">Evidence and release decision</h2>
+<p><strong>NOT APPROVED.</strong> Automated checks do not constitute human sign-off. Open the local JSON reports to inspect exact-HEAD status, provenance and unresolved issues.</p>
+<ul class="evidence-links">${evidenceReports.map(([label, filename]) =>
+  `<li><a href="${filename}" class="evidence-link">${escapeHtml(label)} (JSON)</a></li>`).join("")}
+</ul>
+</section>
 <h2>Human review checklist — not yet signed off</h2>
 <ul><li>Readability, spacing, contrast and visible focus</li><li>Copy clarity, en-US terminology and fictional-data disclaimers</li><li>Responsive presentation and keyboard/screen-reader review in the actual previews</li><li>NexOffices Render deploy SHA and four separate Brazilian CI debts</li></ul>
 ${sections}
