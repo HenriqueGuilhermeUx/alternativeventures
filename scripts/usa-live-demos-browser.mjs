@@ -25,15 +25,28 @@ try {
     const runtimeErrors = [];
     const brazilianApiCalls = [];
     page.on('pageerror', error => runtimeErrors.push(error.message));
-    page.on('request', request => {
+    // Fail closed *before* an accidental real request can reach a provider.
+    // The previews are static, synthetic demos: no POSTs, backend endpoints,
+    // third-party APIs, or Brazilian production traffic are authorized.
+    // Netlify's own preview toolbar and read-only Google font assets are the
+    // only permitted cross-origin exceptions.
+    await page.route('**/*', async route => {
+      const request = route.request();
       const u = new URL(request.url());
       const preview = new URL(item.url);
-      const outsideProviders = ['onrender.com', 'supabase.co'].some(domain => u.hostname === domain || u.hostname.endsWith('.' + domain));
-      const brazilApp = ['trymodo.com.br', 'trynexa.com.br', 'nexoffices.com.br'].includes(u.hostname);
-      const previewApi = u.origin === preview.origin && u.pathname.startsWith('/api/');
-      // The Netlify deploy-preview toolbar calls app.netlify.com telemetry APIs;
-      // only block product API endpoints and Brazilian production destinations.
-      if (outsideProviders || brazilApp || previewApi) brazilianApiCalls.push(u.href);
+      const readOnly = request.method() === 'GET' || request.method() === 'HEAD';
+      const samePreview = u.origin === preview.origin;
+      const previewBackend = /^\\/(?:api\\/|\\.netlify\\/(?:functions|edge-functions)\\/)/.test(u.pathname);
+      const toolbar = u.protocol === 'https:' && u.hostname === 'app.netlify.com';
+      const fontAsset = u.protocol === 'https:' && readOnly &&
+        ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(u.hostname);
+      const forbidden = samePreview ? (!readOnly || previewBackend) : !(toolbar || fontAsset);
+      if (forbidden) {
+        brazilianApiCalls.push(request.method() + ' ' + u.href);
+        await route.abort('blockedbyclient');
+        return;
+      }
+      await route.continue();
     });
     const response = await page.goto(item.url, {waitUntil:'domcontentloaded',timeout:45000});
     assert.ok(response?.ok(), item.label + ' preview unavailable: ' + response?.status());
