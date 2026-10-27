@@ -59,7 +59,7 @@ assert.ok(!/action=["']https?:/i.test(html), "No remote forms allowed on preview
 const forbiddenPreviewFeatures = [
   ["input or submission controls", /<(?:form|input|textarea|select|button)\b/i],
   ["embedded third-party content", /<(?:iframe|object|embed)\b/i],
-  ["external executable scripts", /<script\b[^>]*\bsrc\s*=/i],
+  ["any executable or blocked script markup", /<script\b/i],
   ["inline HTML event handlers", /\bon[a-z]+\s*=/i],
   ["client-side network calls", /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\s*\(/i],
   ["persistent browser storage", /\b(?:localStorage|sessionStorage|indexedDB|serviceWorker)\b/i],
