@@ -220,6 +220,18 @@ try {
     }));
     assert.ok(postReloadDimensions.content <= postReloadDimensions.viewport + 2,
       item.label + ': post-workflow reload introduced horizontal overflow: ' + JSON.stringify(postReloadDimensions));
+    // Exercise enlarged root text after the synthetic workflow and reload.
+    // This is a focused reflow regression check, not a complete WCAG zoom audit.
+    // It runs on the real deployed preview and cannot change product data.
+    await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+    const enlarged = await page.evaluate(() => ({
+      viewport: document.documentElement.clientWidth,
+      content: document.documentElement.scrollWidth,
+    }));
+    assert.ok(enlarged.content <= enlarged.viewport + 2,
+      item.label + ': 200% root text scaling introduced horizontal overflow: ' + JSON.stringify(enlarged));
+    assert.ok(await page.getByRole('heading', { name: item.heading }).isVisible(),
+      item.label + ': primary heading disappeared after 200% root text scaling');
     assert.deepEqual(runtimeErrors, [], item.label + ': interactive demo runtime errors');
     assert.deepEqual(brazilianApiCalls, [], item.label + ': interactive demo attempted forbidden backend requests');
     console.log('PASS: ' + item.label + ' 320px + 390px + 1280px -> ' + item.url +
