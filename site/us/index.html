@@ -49,6 +49,7 @@
     .card.wide{grid-column:1/-1;min-height:230px}
     .product-demo-link{display:inline-flex;margin-top:16px;align-items:center;gap:6px;min-height:44px;color:#75e5ff;font-size:13px;font-weight:800;width:fit-content;border-bottom:1px solid rgba(117,229,255,.35);padding:8px 0}
     .product-demo-link:hover{color:#fff;border-color:#fff}
+    .card .demo-caveat{margin:12px 0 0;font-size:12px;line-height:1.6;color:#d2dcef}
     .division{border-top:1px solid var(--line);margin-top:60px;padding:40px 0 65px}
     .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
     .step{padding:20px 0}
@@ -128,7 +129,8 @@
           <small>Business operating system</small><h3>NexOffices</h3>
           <p>A command center connecting CRM, operations, documents, marketing and AI-assisted coordination. US accounting, payments and tax workflows require additional integration work.</p>
           <span class="tag">English preview in development</span>
-          <a class="product-demo-link" href="https://nexoffices-usa-staging.onrender.com/us/" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open NexOffices USA interactive preview in a new tab">Explore NexOffices USA demo ↗</a>
+          <p class="demo-caveat" id="nexoffices-preview-note">Staging-only preview. The published build may differ from the current review branch; verify its source commit before evaluating functionality. Not approved for production use.</p>
+          <a class="product-demo-link" href="https://nexoffices-usa-staging.onrender.com/us/" target="_blank" rel="noopener noreferrer nofollow" aria-label="Open NexOffices USA interactive preview in a new tab" aria-describedby="nexoffices-preview-note">Explore NexOffices USA demo ↗</a>
         </article>
       </div>
     </section>
