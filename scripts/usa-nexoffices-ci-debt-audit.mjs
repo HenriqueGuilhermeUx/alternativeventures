@@ -16,7 +16,7 @@ const DEBTS = [
   { name: 'Receiving Account Onboarding V1', issue: 95 },
 ];
 
-export function assess(pr, headRuns, mainRuns, mainTotal = 0) {
+export function assess(pr, headRuns, mainRuns, mainTotal = 0, securityChecks = null) {
   assert.equal(pr?.number, 91, 'Unexpected NexOffices PR');
   assert.equal(pr?.state, 'open', 'NexOffices PR is not open');
   assert.equal(pr?.draft, true, 'NexOffices PR is no longer draft');
@@ -44,6 +44,14 @@ export function assess(pr, headRuns, mainRuns, mainTotal = 0) {
       baseline_classification: baseline ? 'requires-assertion-level-comparison' : 'unverified-no-equivalent-base-run',
     };
   });
+  // GitGuardian is a separate security gate, not one of the four shared-BR workflows.
+  // Missing, duplicated or non-completed check-runs remain unverified.
+  const securityMatches = Array.isArray(securityChecks) ? securityChecks.filter(run =>
+    run?.name === 'GitGuardian Security Checks' && run?.head_sha === head) : [];
+  const security = securityMatches.length === 1 ? securityMatches[0] : null;
+  const securityClassification = !security || security.status !== 'completed'
+    ? 'unverified' : security.conclusion === 'success' ? 'passed'
+      : security.conclusion === 'failure' ? 'failed' : 'unverified';
   return {
     schema_version: 1,
     purpose: 'Read-only NexOffices USA PR #91 shared-BR CI debt audit; not a release approval',
@@ -51,6 +59,13 @@ export function assess(pr, headRuns, mainRuns, mainTotal = 0) {
     base_sha: base,
     pr_draft: true,
     failures,
+    security_check: {
+      name: 'GitGuardian Security Checks',
+      exact_pr_head_verified: Boolean(security && security.head_sha === head),
+      check_run_url: security?.html_url || null,
+      conclusion: security?.conclusion || 'missing',
+      classification: securityClassification,
+    },
     exact_head_failed_count: failures.filter(f => f.exact_pr_head_verified && f.pr_run_conclusion === 'failure').length,
     equivalent_base_run_count: failures.filter(f => f.base_run_url).length,
     main_run_window: { query_scope: 'exact-base-sha', returned: mainRuns.length,
@@ -75,6 +90,14 @@ if (process.argv.includes('--self-test')) {
   assert.equal(report.main_run_window.query_scope, 'exact-base-sha');
   assert.equal(report.main_run_window.potentially_truncated, true);
   assert.equal(report.release_approved, false);
+  assert.equal(report.security_check.classification, 'unverified');
+  const check = { name: 'GitGuardian Security Checks', head_sha: head,
+    status: 'completed', conclusion: 'failure',
+    html_url: 'https://github.com/' + REPO + '/runs/123' };
+  assert.equal(assess(pr, runs, [], 0, [check]).security_check.classification, 'failed');
+  assert.equal(assess(pr, runs, [], 0, [{ ...check, conclusion: 'success' }]).security_check.classification, 'passed');
+  assert.equal(assess(pr, runs, [], 0, [check, check]).security_check.classification, 'unverified');
+  assert.equal(assess(pr, runs, [], 0, [{ ...check, head_sha: base }]).security_check.classification, 'unverified');
   assert.equal(report.failures[0].baseline_classification, 'unverified-no-equivalent-base-run');
   assert.equal(assess(pr, runs, [{ ...runs[0], head_sha: base }], 1).equivalent_base_run_count, 1);
   assert.equal(assess(pr, runs.slice(1), [], 0).exact_head_failed_count, 3);
@@ -93,22 +116,27 @@ if (process.argv.includes('--self-test')) {
     return response.json();
   }
   const pr = await github('/pulls/91');
-  const [headRuns, mainRuns] = await Promise.all([
+  const [headRuns, mainRuns, checkRuns] = await Promise.all([
     github('/actions/runs?head_sha=' + pr.head.sha + '&per_page=100'),
     // Query the exact PR base commit, not the newest 100 runs from main.
     // The old branch window could hide comparable runs among hundreds of newer commits.
     github('/actions/runs?head_sha=' + pr.base.sha + '&per_page=100'),
+    github('/commits/' + pr.head.sha + '/check-runs?per_page=100'),
   ]);
   assert.ok(mainRuns.workflow_runs.every(run => run.head_sha === pr.base.sha),
     'GitHub returned a run from a different base SHA');
-  const report = assess(pr, headRuns.workflow_runs, mainRuns.workflow_runs, mainRuns.total_count);
+  assert.ok(checkRuns.total_count <= checkRuns.check_runs.length,
+    'Security check run pagination incomplete; cannot classify GitGuardian');
+  const report = assess(pr, headRuns.workflow_runs, mainRuns.workflow_runs,
+    mainRuns.total_count, checkRuns.check_runs);
   report.checked_at = new Date().toISOString();
   mkdirSync('artifacts/usa-review', { recursive: true });
   writeFileSync('artifacts/usa-review/nexoffices-shared-ci-debts.json',
     JSON.stringify(report, null, 2) + '\n');
   console.log('NexOffices exact HEAD shared-BR failures: ' + report.exact_head_failed_count +
     '/4; equivalent main runs: ' + report.equivalent_base_run_count +
-    '/4; legacy classification NOT PROVEN');
+    '/4; legacy classification NOT PROVEN; GitGuardian: ' +
+    report.security_check.classification);
   if (report.exact_head_failed_count !== 4)
     console.log('::warning::Shared-BR CI changed; inspect the four separate workflows before release.');
 }
