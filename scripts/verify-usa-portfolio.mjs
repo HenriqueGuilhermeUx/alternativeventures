@@ -37,7 +37,13 @@ for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
 }
 const demoAnchors = [...html.matchAll(/<a\b[^>]*class="product-demo-link"[^>]*>/g)].map(match => match[0]);
 assert.equal(demoAnchors.length, 5, "Exactly five verified staging demo links are expected");
+assert.match(html, /<p class="demo-data-note" id="usa-demo-data-note">Fictional sample data only\./,
+  "Visible fictional-data guidance is required before any USA demo links");
+assert.match(html, /Do not enter personal, customer, financial, or confidential information/,
+  "Preview must warn reviewers against entering real information");
 for (const anchor of demoAnchors) {
+  assert.match(anchor, /aria-describedby="usa-demo-data-note(?: nexoffices-preview-note)?"/,
+    "Each demo link must expose the fictional-data warning to assistive technology");
   assert.match(anchor, /target="_blank"/, "Staging demos must open in a separate tab");
   assert.match(anchor, /aria-label="[^"]+new tab"/, "Staging demos need a descriptive new-tab label");
   const rel = anchor.match(/rel="([^"]+)"/)?.[1].split(/\s+/) ?? [];
