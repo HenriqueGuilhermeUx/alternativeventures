@@ -109,6 +109,21 @@ export function assessSharedCiDebts(provenance, evidence) {
   };
 }
 
+// GitGuardian is a separate check-run, not a fifth shared-product CI debt.
+export function assessSecurityCheck(provenance, evidence) {
+  const item = evidence?.security_check;
+  const valid = evidence?.pr_head_sha?.toLowerCase() ===
+      String(provenance?.expected_pr_head_sha || '').toLowerCase() &&
+    SHA.test(evidence?.pr_head_sha || '') &&
+    item?.name === 'GitGuardian Security Checks' &&
+    item?.exact_pr_head_verified === true &&
+    /^https:\/\/github\.com\/HenriqueGuilhermeUx\/nexoffice\/runs\/[0-9]+$/.test(item?.check_run_url || '');
+  if (!valid) return 'unverified';
+  if (item.classification === 'failed' && item.conclusion === 'failure') return 'failed';
+  if (item.classification === 'passed' && item.conclusion === 'success') return 'passed';
+  return 'unverified';
+}
+
 export function assess(manifest, provenance, netlify = null, ciDebts = null) {
   assert.equal(manifest.schema_version, 1, 'Unsupported screenshot manifest');
   assert.match(manifest.pr_head_sha, SHA, 'Invalid institutional PR HEAD');
@@ -120,6 +135,7 @@ export function assess(manifest, provenance, netlify = null, ciDebts = null) {
   const reasons = [];
   const netlifyAssessment = assessNetlify(manifest, netlify);
   const sharedCiAssessment = assessSharedCiDebts(provenance, ciDebts);
+  const securityStatus = assessSecurityCheck(provenance, ciDebts);
   if (netlifyAssessment.status !== 'github-status-success-only') {
     reasons.push('Netlify exact-HEAD preview status evidence is incomplete or inconsistent: ' +
       netlifyAssessment.problems.join('; '));
@@ -145,6 +161,11 @@ export function assess(manifest, provenance, netlify = null, ciDebts = null) {
   } else {
     reasons.push('Four NexOffices shared-product CI failures remain unclassified against baseline main');
   }
+  if (securityStatus === 'failed') {
+    reasons.push('NexOffices GitGuardian security check failed on the exact PR #91 HEAD; investigate separately from four BR CI debts');
+  } else if (securityStatus !== 'passed') {
+    reasons.push('NexOffices GitGuardian exact-HEAD security check evidence is missing or unverified');
+  }
   return {
     schema_version: 1,
     purpose: 'USA fictional-data demo release decision; no commercial authorization',
@@ -159,6 +180,7 @@ export function assess(manifest, provenance, netlify = null, ciDebts = null) {
     nexoffices_shared_ci_debt_evidence: sharedCiAssessment.status,
     nexoffices_exact_head_failed_checks: sharedCiAssessment.exact_head_failed_count,
     nexoffices_shared_ci_baseline_proven: false,
+    nexoffices_security_check_status: securityStatus,
     automated_artifact_evidence: 'available-for-review',
     decision: 'not-approved',
     reasons,
@@ -205,6 +227,10 @@ if (process.argv.includes('--self-test')) {
     schema_version: 1, pr_draft: true, pr_head_sha: sha, base_sha: 'b'.repeat(40),
     release_approved: false, legacy_status: 'not-proven',
     exact_head_failed_count: 4, equivalent_base_run_count: 0,
+    security_check: { name: 'GitGuardian Security Checks',
+      exact_pr_head_verified: true,
+      check_run_url: 'https://github.com/HenriqueGuilhermeUx/nexoffice/runs/123',
+      conclusion: 'failure', classification: 'failed' },
     failures: EXPECTED_SHARED_CI_DEBTS.map(([workflow, issue], i) => ({
       workflow, tracking_issue: 'https://github.com/HenriqueGuilhermeUx/nexoffice/issues/' + issue,
       exact_pr_head_verified: true, pr_run_conclusion: 'failure',
@@ -216,6 +242,15 @@ if (process.argv.includes('--self-test')) {
   assert.equal(assessSharedCiDebts(provenance, ciDebts).status, 'four-failures-unresolved');
   assert.equal(assess(manifest, provenance, netlify, ciDebts).nexoffices_exact_head_failed_checks, 4);
   assert.equal(assess(manifest, provenance, netlify, ciDebts).decision, 'not-approved');
+  assert.equal(assessSecurityCheck(provenance, ciDebts), 'failed');
+  assert.equal(assess(manifest, provenance, netlify, ciDebts).nexoffices_security_check_status, 'failed');
+  assert.ok(assess(manifest, provenance, netlify, ciDebts).reasons.some(x => x.includes('GitGuardian security check failed')));
+  assert.equal(assessSecurityCheck(provenance, { ...ciDebts, security_check: {
+    ...ciDebts.security_check, conclusion: 'success', classification: 'passed' } }), 'passed');
+  assert.equal(assessSecurityCheck(provenance, { ...ciDebts, security_check: {
+    ...ciDebts.security_check, check_run_url: 'https://example.com/123' } }), 'unverified');
+  assert.equal(assessSecurityCheck(provenance, { ...ciDebts, pr_head_sha: 'c'.repeat(40) }), 'unverified');
+  assert.equal(assessSecurityCheck(provenance, { ...ciDebts, security_check: null }), 'unverified');
   assert.equal(assessSharedCiDebts(provenance, null).status, 'unverified');
   assert.equal(assessSharedCiDebts(provenance, { ...ciDebts,
     pr_head_sha: 'c'.repeat(40) }).status, 'unverified');
