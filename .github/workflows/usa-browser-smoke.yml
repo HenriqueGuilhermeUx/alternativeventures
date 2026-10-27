@@ -14,6 +14,7 @@ on:
       - 'scripts/usa-evidence-manifest.mjs'
       - 'scripts/usa-review-index.mjs'
       - 'scripts/usa-review-browser.mjs'
+      - 'scripts/usa-package-integrity.mjs'
       - '.github/workflows/usa-browser-smoke.yml'
   workflow_dispatch:
 permissions:
@@ -77,6 +78,13 @@ jobs:
         run: node scripts/usa-review-index.mjs
       - name: Browser-check generated offline review gallery and all eighteen screenshots
         run: node scripts/usa-review-browser.mjs
+      - name: Hash and verify complete offline review package (no network)
+        env:
+          USA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node scripts/usa-package-integrity.mjs --self-test
+          node scripts/usa-package-integrity.mjs
+          node scripts/usa-package-integrity.mjs --verify
       - name: Preserve fictional-data screenshots and integrity manifest for manual review
         if: always()
         uses: actions/upload-artifact@v4
@@ -90,5 +98,6 @@ jobs:
             artifacts/usa-review/nexoffices-shared-ci-debts.json
             artifacts/usa-review/release-readiness.json
             artifacts/usa-review/review.html
+            artifacts/usa-review/integrity.json
           if-no-files-found: error
           retention-days: 7
