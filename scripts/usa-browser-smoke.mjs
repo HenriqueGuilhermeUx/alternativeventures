@@ -130,6 +130,15 @@ try {
       assert.match(link.rel, /nofollow/);
     }
     assert.ok(await page.getByRole('link', {name:/Open NexOffices USA interactive preview/}).isVisible());
+    // Do not let a green preview status imply that the NexOffices Render staging
+    // deploy matches the current PR. Expose the caveat visually and to AT.
+    const nexOfficesLink = page.getByRole('link', { name: /Open NexOffices USA interactive preview/ });
+    assert.equal(await nexOfficesLink.getAttribute('aria-describedby'), 'nexoffices-preview-note');
+    const stagingCaveat = page.locator('#nexoffices-preview-note');
+    assert.equal(await stagingCaveat.count(), 1, 'NexOffices staging caveat must have a unique id');
+    assert.ok(await stagingCaveat.isVisible(), 'NexOffices provenance caveat must be visible');
+    assert.match(await stagingCaveat.innerText(), /published build may differ from the current review branch/i);
+    assert.match(await stagingCaveat.innerText(), /not approved for production use/i);
     // Text-only zoom is a critical narrow-screen accessibility regression check.
     // Do not assert font metrics: enforce usable navigation and zero horizontal scroll.
     if (width === 320) {
