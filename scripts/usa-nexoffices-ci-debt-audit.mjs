@@ -24,6 +24,7 @@ export function assess(pr, headRuns, mainRuns, mainTotal = 0) {
   assert.equal(pr?.head?.repo?.full_name, REPO, 'Unexpected source repository');
   assert.match(pr?.head?.sha || '', SHA, 'Invalid NexOffices HEAD');
   assert.match(pr?.base?.sha || '', SHA, 'Invalid base SHA');
+  assert.equal(pr?.base?.ref, 'main', 'Unexpected NexOffices base branch');
   assert.ok(Array.isArray(headRuns) && Array.isArray(mainRuns), 'Missing workflow runs');
   const head = pr.head.sha;
   const base = pr.base.sha;
@@ -52,7 +53,8 @@ export function assess(pr, headRuns, mainRuns, mainTotal = 0) {
     failures,
     exact_head_failed_count: failures.filter(f => f.exact_pr_head_verified && f.pr_run_conclusion === 'failure').length,
     equivalent_base_run_count: failures.filter(f => f.base_run_url).length,
-    main_run_window: { returned: mainRuns.length, total: mainTotal, potentially_truncated: mainTotal > mainRuns.length },
+    main_run_window: { query_scope: 'exact-base-sha', returned: mainRuns.length,
+      total: mainTotal, potentially_truncated: mainTotal > mainRuns.length },
     legacy_status: 'not-proven',
     release_approved: false,
   };
@@ -61,7 +63,7 @@ export function assess(pr, headRuns, mainRuns, mainTotal = 0) {
 if (process.argv.includes('--self-test')) {
   const head = 'a'.repeat(40), base = 'b'.repeat(40);
   const pr = { number: 91, state: 'open', draft: true,
-    head: { sha: head, ref: BRANCH, repo: { full_name: REPO } }, base: { sha: base } };
+    head: { sha: head, ref: BRANCH, repo: { full_name: REPO } }, base: { sha: base, ref: 'main' } };
   const runs = DEBTS.map((d, i) => ({
     name: d.name, head_sha: head, conclusion: 'failure',
     html_url: 'https://github.com/' + REPO + '/actions/runs/' + (100 + i),
@@ -70,11 +72,14 @@ if (process.argv.includes('--self-test')) {
   assert.equal(report.exact_head_failed_count, 4);
   assert.equal(report.equivalent_base_run_count, 0);
   assert.equal(report.legacy_status, 'not-proven');
+  assert.equal(report.main_run_window.query_scope, 'exact-base-sha');
+  assert.equal(report.main_run_window.potentially_truncated, true);
   assert.equal(report.release_approved, false);
   assert.equal(report.failures[0].baseline_classification, 'unverified-no-equivalent-base-run');
   assert.equal(assess(pr, runs, [{ ...runs[0], head_sha: base }], 1).equivalent_base_run_count, 1);
   assert.equal(assess(pr, runs.slice(1), [], 0).exact_head_failed_count, 3);
   assert.throws(() => assess({ ...pr, draft: false }, runs, []), /draft/);
+  assert.throws(() => assess({ ...pr, base: { ...pr.base, ref: 'release' } }, runs, []), /base branch/);
   assert.throws(() => assess({ ...pr, head: { ...pr.head, sha: 'bad' } }, runs, []), /Invalid/);
   console.log('PASS: four separate debts, exact HEAD matching, missing baseline and fail-closed release classification');
 } else {
@@ -90,8 +95,12 @@ if (process.argv.includes('--self-test')) {
   const pr = await github('/pulls/91');
   const [headRuns, mainRuns] = await Promise.all([
     github('/actions/runs?head_sha=' + pr.head.sha + '&per_page=100'),
-    github('/actions/runs?branch=main&per_page=100'),
+    // Query the exact PR base commit, not the newest 100 runs from main.
+    // The old branch window could hide comparable runs among hundreds of newer commits.
+    github('/actions/runs?head_sha=' + pr.base.sha + '&per_page=100'),
   ]);
+  assert.ok(mainRuns.workflow_runs.every(run => run.head_sha === pr.base.sha),
+    'GitHub returned a run from a different base SHA');
   const report = assess(pr, headRuns.workflow_runs, mainRuns.workflow_runs, mainRuns.total_count);
   report.checked_at = new Date().toISOString();
   mkdirSync('artifacts/usa-review', { recursive: true });
