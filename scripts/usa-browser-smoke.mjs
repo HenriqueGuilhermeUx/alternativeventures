@@ -57,13 +57,13 @@ try {
       local: localStorage.length,
       session: sessionStorage.length,
       cookies: document.cookie,
-      externalScripts: [...document.scripts].filter(script => script.src).map(script => script.src),
+      scriptCount: document.scripts.length,
     }));
     assert.equal(browserState.local, 0, 'USA institutional preview must not write localStorage');
     assert.equal(browserState.session, 0, 'USA institutional preview must not write sessionStorage');
     assert.equal(browserState.cookies, '', 'USA institutional preview must not set readable cookies');
-    assert.deepEqual(browserState.externalScripts, [],
-      'USA institutional preview must not load external JavaScript');
+    assert.equal(browserState.scriptCount, 0,
+      'USA institutional preview must be script-free under its deny-all CSP');
 
     // Prevent inaccessible or ambiguous navigation as new US products are added.
     assert.equal(await page.getByRole('main').count(), 1, 'Exactly one main landmark is required');
