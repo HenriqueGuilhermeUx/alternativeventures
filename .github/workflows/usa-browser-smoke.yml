@@ -8,6 +8,7 @@ on:
       - 'scripts/usa-live-demos-browser.mjs'
       - 'scripts/usa-nexoffices-render-browser.mjs'
       - 'scripts/usa-render-provenance-audit.mjs'
+      - 'scripts/usa-release-readiness.mjs'
       - 'scripts/usa-evidence-manifest.mjs'
       - 'scripts/usa-review-index.mjs'
       - 'scripts/usa-review-browser.mjs'
@@ -52,6 +53,10 @@ jobs:
         run: node scripts/usa-review-index.mjs
       - name: Browser-check generated offline review gallery and all eighteen screenshots
         run: node scripts/usa-review-browser.mjs
+      - name: Produce fail-closed release-readiness decision for human reviewers
+        run: |
+          node scripts/usa-release-readiness.mjs --self-test
+          node scripts/usa-release-readiness.mjs
       - name: Preserve fictional-data screenshots and integrity manifest for manual review
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,6 +66,7 @@ jobs:
             artifacts/usa-review/*.png
             artifacts/usa-review/manifest.json
             artifacts/usa-review/nexoffices-render-provenance.json
+            artifacts/usa-review/release-readiness.json
             artifacts/usa-review/review.html
           if-no-files-found: error
           retention-days: 7
