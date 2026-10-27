@@ -3,6 +3,7 @@
  */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -45,11 +46,16 @@ const captures = expected.map(([name, viewportWidth]) => {
 });
 const sha = process.env.USA_PR_HEAD_SHA || null;
 if (sha) assert.match(sha, /^[a-f0-9]{40}$/i, 'PR HEAD must be a full Git commit SHA');
+const checkoutSha = execFileSync('git', ['rev-parse', '--verify', 'HEAD'], { encoding: 'utf8' }).trim();
+assert.match(checkoutSha, /^[a-f0-9]{40}$/i, 'Checkout must resolve to a full Git commit SHA');
+if (sha) assert.equal(checkoutSha.toLowerCase(), sha.toLowerCase(),
+  'Evidence checkout must match the exact PR HEAD, not a synthetic merge commit');
 const manifest = {
   schema_version: 1,
   purpose: 'USA preview-only fictional-data visual review; not production approval',
   pr_head_sha: sha,
-  checkout_sha: process.env.GITHUB_SHA || null,
+  checkout_sha: checkoutSha,
+  event_merge_sha: process.env.GITHUB_SHA || null,
   workflow_run_url: process.env.GITHUB_REPOSITORY && process.env.GITHUB_RUN_ID
     ? `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` : null,
   captures,
