@@ -28,12 +28,17 @@ try {
     const errors = [];
     const unexpectedRequests = [];
     page.on('pageerror', error => errors.push(error.message));
-    page.on('request', request => {
+    // Fail closed before a third-party or mutating request can leave the
+    // institutional page. This static portfolio needs no remote font service.
+    await page.route('**/*', async route => {
+      const request = route.request();
       const url = new URL(request.url());
-      const allowedFontHosts = ['fonts.googleapis.com', 'fonts.gstatic.com'];
-      if (url.origin !== base && !allowedFontHosts.includes(url.hostname)) {
-        unexpectedRequests.push(url.href);
+      if (url.origin !== base || !['GET', 'HEAD'].includes(request.method())) {
+        unexpectedRequests.push(request.method() + ' ' + url.href);
+        await route.abort('blockedbyclient');
+        return;
       }
+      await route.continue();
     });
     await page.goto(base + '/us/', { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.getByRole('heading', { name: /Build what matters/i }).waitFor();
@@ -216,7 +221,7 @@ try {
   assert.deepEqual(focusedHeaderLinks, expectedHeaderLinks,
     'Every header link must be keyboard reachable in order with a visible high-contrast focus ring');
   await contrast.close();
-  console.log('PASS: institutional USA 320/390/1280px browser QA, refresh, reduced motion, keyboard focus, forced-colors keyboard navigation, approved-only network requests and staging links');
+  console.log('PASS: institutional USA 320/390/1280px browser QA, refresh, reduced motion, keyboard focus, forced-colors keyboard navigation, zero third-party requests and staging links');
 } finally {
   await browser?.close();
   server.kill('SIGTERM');
