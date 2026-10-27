@@ -8,6 +8,7 @@ on:
       - 'scripts/usa-live-demos-browser.mjs'
       - 'scripts/usa-nexoffices-render-browser.mjs'
       - 'scripts/usa-render-provenance-audit.mjs'
+      - 'scripts/usa-netlify-status-audit.mjs'
       - 'scripts/usa-release-readiness.mjs'
       - 'scripts/usa-evidence-manifest.mjs'
       - 'scripts/usa-review-index.mjs'
@@ -45,6 +46,12 @@ jobs:
         run: |
           node scripts/usa-render-provenance-audit.mjs --self-test
           node scripts/usa-render-provenance-audit.mjs
+      - name: Record exact-HEAD GitHub Netlify preview status evidence (read-only)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/usa-netlify-status-audit.mjs --self-test
+          node scripts/usa-netlify-status-audit.mjs
       - name: Verify screenshots and generate SHA-256 review manifest
         env:
           USA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -66,6 +73,7 @@ jobs:
             artifacts/usa-review/*.png
             artifacts/usa-review/manifest.json
             artifacts/usa-review/nexoffices-render-provenance.json
+            artifacts/usa-review/netlify-status-evidence.json
             artifacts/usa-review/release-readiness.json
             artifacts/usa-review/review.html
           if-no-files-found: error
