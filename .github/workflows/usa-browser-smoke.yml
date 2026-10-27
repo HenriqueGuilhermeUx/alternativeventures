@@ -8,6 +8,7 @@ on:
       - 'scripts/usa-live-demos-browser.mjs'
       - 'scripts/usa-nexoffices-render-browser.mjs'
       - 'scripts/usa-evidence-manifest.mjs'
+      - 'scripts/usa-review-index.mjs'
       - '.github/workflows/usa-browser-smoke.yml'
   workflow_dispatch:
 permissions:
@@ -39,6 +40,8 @@ jobs:
         env:
           USA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/usa-evidence-manifest.mjs
+      - name: Build offline human-review gallery from integrity-verified screenshots
+        run: node scripts/usa-review-index.mjs
       - name: Preserve fictional-data screenshots and integrity manifest for manual review
         if: always()
         uses: actions/upload-artifact@v4
@@ -47,5 +50,6 @@ jobs:
           path: |
             artifacts/usa-review/*.png
             artifacts/usa-review/manifest.json
+            artifacts/usa-review/review.html
           if-no-files-found: error
           retention-days: 7
