@@ -63,14 +63,14 @@ jobs:
         env:
           USA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: node scripts/usa-evidence-manifest.mjs
-      - name: Build offline human-review gallery from integrity-verified screenshots
-        run: node scripts/usa-review-index.mjs
-      - name: Browser-check generated offline review gallery and all eighteen screenshots
-        run: node scripts/usa-review-browser.mjs
       - name: Produce fail-closed release-readiness decision for human reviewers
         run: |
           node scripts/usa-release-readiness.mjs --self-test
           node scripts/usa-release-readiness.mjs
+      - name: Build offline human-review gallery from integrity-verified screenshots
+        run: node scripts/usa-review-index.mjs
+      - name: Browser-check generated offline review gallery and all eighteen screenshots
+        run: node scripts/usa-review-browser.mjs
       - name: Preserve fictional-data screenshots and integrity manifest for manual review
         if: always()
         uses: actions/upload-artifact@v4
