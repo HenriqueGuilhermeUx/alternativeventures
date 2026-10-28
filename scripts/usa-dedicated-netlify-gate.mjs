@@ -39,10 +39,16 @@ export function assess(input) {
     const teamOk = project?._enrichedFields?.teamId === expectedTeamId;
     const urlOk = canonicalHostMatches(project, name);
     const projectOk = identityOk && teamOk && urlOk && project?.claimed === true;
+    // Review builds must remain team-only until explicitly approved for public access.
+    const access = project?._enrichedFields?.projectAccessControls;
+    const protectedForAllDeploys = access?.requiresSSOTeamLogin === true &&
+      access?.whichProjectsRequireSSOTeamLogin === 'all' &&
+      access?.requiresPassword === false;
     const headOk = shaPattern.test(expectedSha || '');
     let status = 'unverified-project';
     if (projectOk && headOk) {
-      if (!deploy || !Object.keys(deploy).length) status = 'no-deploy';
+      if (!protectedForAllDeploys) status = 'unprotected-project';
+      else if (!deploy || !Object.keys(deploy).length) status = 'no-deploy';
       else if (deploy?.state !== 'ready' && deploy?.state !== 'current') status = 'deploy-not-ready';
       else if (!shaPattern.test(actualSha || '') ||
                actualSha.toLowerCase() !== expectedSha.toLowerCase()) status = 'deploy-sha-unverified';
@@ -52,6 +58,7 @@ export function assess(input) {
       project: name, site_id: id, expected_pr_head_sha: headOk ? expectedSha : null,
       project_identity_verified: Boolean(projectOk),
       team_verified: teamOk, canonical_url_verified: urlOk,
+      team_login_protected_all_deploys: protectedForAllDeploys,
       deploy_id: typeof deploy?.id === 'string' ? deploy.id : null,
       status, independently_verified_served_bytes: false,
       release_approved: false,
@@ -73,7 +80,9 @@ if (process.argv.includes('--self-test')) {
   const projects = Object.entries(sites).map(([name, id]) => ({
     name, id, claimed: true,
     _enrichedFields: { teamId: expectedTeamId,
-      urls: { primarySiteUrl: `http://${name}.netlify.app` } },
+      urls: { primarySiteUrl: `http://${name}.netlify.app` },
+      projectAccessControls: { requiresSSOTeamLogin: true,
+        whichProjectsRequireSSOTeamLogin: 'all', requiresPassword: false } },
     currentDeploy: { state: 'current', currentDeploy: {} },
   }));
   const expectedHeads = Object.fromEntries(Object.keys(sites).map(name => [name, sha]));
@@ -86,6 +95,16 @@ if (process.argv.includes('--self-test')) {
   assert.equal(assess({ projects: altered, expectedHeads }).projects[0].status,
     'requires-independent-http-and-visual-review');
   assert.equal(assess({ projects: altered, expectedHeads }).release_approved, false);
+  assert.equal(assess({ projects: [{ ...ready, _enrichedFields: {
+    ...ready._enrichedFields, projectAccessControls: {
+      requiresSSOTeamLogin: false, whichProjectsRequireSSOTeamLogin: null,
+      requiresPassword: false } } }, ...projects.slice(1)], expectedHeads
+  }).projects[0].status, 'unprotected-project');
+  assert.equal(assess({ projects: [{ ...ready, _enrichedFields: {
+    ...ready._enrichedFields, projectAccessControls: {
+      requiresSSOTeamLogin: true, whichProjectsRequireSSOTeamLogin: 'non-production',
+      requiresPassword: false } } }, ...projects.slice(1)], expectedHeads
+  }).projects[0].status, 'unprotected-project');
   assert.equal(assess({ projects: [{ ...ready, _enrichedFields: {
     ...ready._enrichedFields, teamId: 'wrong-team' } }, ...projects.slice(1)],
     expectedHeads }).projects[0].status, 'unverified-project');
@@ -107,7 +126,7 @@ if (process.argv.includes('--self-test')) {
   assert.equal(assess({ projects: altered, expectedHeads: {} }).projects[0].status,
     'unverified-project');
   assert.equal(assess(input).projects.every(p => !p.independently_verified_served_bytes), true);
-  console.log('PASS: four dedicated USA site IDs, exact team/host, empty deployments, mismatched SHAs and non-approval');
+  console.log('PASS: USA site IDs, team/host, all-deploy team-login protection, missing deploys, SHA mismatches and non-approval');
 } else {
   const index = process.argv.indexOf('--input');
   if (index < 0 || !process.argv[index + 1]) {
