@@ -32,9 +32,24 @@ export function assessResponse({ path, allowed, status, headers, body, redirecte
     if (!robots.includes('noindex') || !robots.includes('nofollow')) errors.push('missing-robots-header');
     if (String(headers?.['x-content-type-options'] || '').toLowerCase() !== 'nosniff') errors.push('missing-nosniff');
     const csp = directives(headers?.['content-security-policy']);
-    for (const key of ['connect-src', 'form-action', 'object-src', 'base-uri']) {
+    for (const key of ['connect-src', 'form-action', 'object-src', 'base-uri', 'frame-ancestors']) {
       if (csp.get(key) !== "'none'") errors.push('unsafe-csp-' + key);
     }
+    // API isolation alone is insufficient: remote scripts, image pixels,
+    // frames and workers can still transmit data outside the USA demo.
+    const defaultSource = csp.get('default-src');
+    if (!["'none'", "'self'"].includes(defaultSource)) errors.push('unsafe-csp-default-src');
+    if (csp.get('script-src') !== "'self'") errors.push('unsafe-csp-script-src');
+    if (csp.get('img-src') !== "'self' data:") errors.push('unsafe-csp-img-src');
+    if (csp.get('frame-src') !== "'none'" &&
+        !(csp.get('frame-src') === undefined && defaultSource === "'none'"))
+      errors.push('unsafe-csp-frame-src');
+    if (csp.has('worker-src') && csp.get('worker-src') !== "'none'")
+      errors.push('unsafe-csp-worker-src');
+    if (String(headers?.['referrer-policy'] || '').toLowerCase() !== 'no-referrer')
+      errors.push('missing-no-referrer');
+    if (String(headers?.['x-frame-options'] || '').toUpperCase() !== 'DENY')
+      errors.push('missing-frame-deny');
     if (!/^text\/html(?:;|$)/i.test(String(headers?.['content-type'] || ''))) errors.push('unexpected-content-type');
     if (!/<html\s[^>]*lang=["']en-US["']/i.test(String(body || ''))) errors.push('missing-en-us-html');
     if (!/<meta\s[^>]*name=["']robots["'][^>]*content=["'][^"']*noindex/i.test(String(body || ''))) errors.push('missing-noindex-meta');
@@ -47,7 +62,7 @@ export function assessResponse({ path, allowed, status, headers, body, redirecte
       errors.push('blocked-route-unexpected-content-type');
     if (!/<h1\b[^>]*>\s*Page\s+(?:not\s+(?:found|available)|unavailable)\b/i.test(deniedBody))
       errors.push('blocked-route-not-static-denial');
-    if (/<(?:script|form|iframe)\b|<meta\b[^>]*http-equiv\s*=\s*["']?refresh\b/i.test(deniedBody))
+    if (/<(?:script|form|iframe|img|picture|video|audio|source|link|style|object|embed|svg|base)\b|<meta\b[^>]*http-equiv\s*=\s*["']?refresh\b/i.test(deniedBody))
       errors.push('blocked-route-has-active-content');
     if (/<title>[^<]*(login|sign in|checkout|pix|dashboard)/i.test(deniedBody))
       errors.push('blocked-route-serves-sensitive-app');
@@ -95,7 +110,8 @@ if (process.argv.includes('--self-test')) {
   const html = '<!doctype html><html lang="en-US"><head><meta name="robots" content="noindex,nofollow"></head><body>Demo only</body></html>';
   const headers = { 'content-type': 'text/html; charset=utf-8',
     'x-robots-tag': 'noindex, nofollow', 'x-content-type-options': 'nosniff',
-    'content-security-policy': "default-src 'self'; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'" };
+    'referrer-policy': 'no-referrer', 'x-frame-options': 'DENY',
+    'content-security-policy': "default-src 'self'; script-src 'self'; img-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'" };
   const good = { path: '/us', allowed: true, status: 200, headers, body: html };
   assert.equal(assessResponse(good).passed, true);
   for (const bad of [
@@ -107,6 +123,16 @@ if (process.argv.includes('--self-test')) {
     { ...good, body: html.replace('lang="en-US"', 'lang="pt-BR"') },
     { ...good, body: html.replace('noindex,nofollow', 'index,follow') },
     { ...good, headers: { ...headers, 'x-content-type-options': undefined } },
+    { ...good, headers: { ...headers, 'referrer-policy': undefined } },
+    { ...good, headers: { ...headers, 'x-frame-options': undefined } },
+    ...[
+      ["script-src 'self'", "script-src *"],
+      ["img-src 'self' data:", "img-src *"],
+      ["frame-src 'none'", "frame-src 'self'"],
+      ["frame-ancestors 'none'", "frame-ancestors *"],
+      ["default-src 'self'", "default-src *"],
+    ].map(([from, to]) => ({ ...good, headers: { ...headers,
+      'content-security-policy': headers['content-security-policy'].replace(from, to) } })),
   ]) assert.equal(assessResponse(bad).passed, false, 'Must fail closed: ' + JSON.stringify(bad));
   assert.equal(assessResponse({ path: '/login', allowed: false, status: 404,
     headers, body: '<title>Not Found</title><h1>Page not found</h1>' }).passed, true);
@@ -118,6 +144,8 @@ if (process.argv.includes('--self-test')) {
     '<title>Not Found</title><div id="root"></div><script src="/assets/app.js"></script>',
     '<h1>Page not found</h1><form action="/login"></form>',
     '<h1>Page not found</h1><meta http-equiv="refresh" content="0;url=/login">',
+    '<h1>Page not found</h1><img src="https://tracker.example/pixel">',
+    '<h1>Page not found</h1><link rel="preload" href="https://tracker.example/script.js">',
   ]) assert.equal(assessResponse({ path: '/login', allowed: false, status: 404,
     headers, body: deniedBody }).passed, false, '404 must be an inert denial page');
   assert.equal(assessResponse({ path: '/login', allowed: false, status: 404,
