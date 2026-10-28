@@ -51,8 +51,15 @@ export function assess(input) {
     // A deploy summary without positive rule counts cannot attest that the
     // dedicated _headers/_redirects files were actually processed.
     const processedRuleCount = kind => {
+      const suffixes = [' ' + kind + ' rule processed', ' ' + kind + ' rules processed'];
       const titles = messages.map(m => String(m?.title || ''));
-      const pattern = new RegExp('^(\\d+) ' + kind + ' rules? processed
+      const title = titles.find(t => suffixes.some(suffix => t.endsWith(suffix)));
+      if (!title) return null;
+      const count = Number(title.split(' ')[0]);
+      return Number.isSafeInteger(count) && count >= 0 ? count : null;
+    };
+    const headerRuleCount = processedRuleCount('header');
+    const redirectRuleCount = processedRuleCount('redirect');
     const identityOk = matches.length === 1 && project?.name === name;
     const teamOk = project?._enrichedFields?.teamId === expectedTeamId;
     const urlOk = canonicalHostMatches(project, name);
