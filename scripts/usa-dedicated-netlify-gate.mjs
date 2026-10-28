@@ -57,7 +57,7 @@ export function assess(input) {
     const secretScan = detailIdentityOk ?
       detail?.deploy_validations_report?.secret_scan_result : null;
     const secretScanOk = Number.isSafeInteger(secretScan?.scannedFilesCount) &&
-      secretScan.scannedFilesCount >= 0 &&
+      secretScan.scannedFilesCount > 0 &&
       Array.isArray(secretScan?.secretsScanMatches) &&
       Array.isArray(secretScan?.enhancedSecretsScanMatches);
     const secretScanFindings = secretScanOk &&
@@ -197,6 +197,15 @@ if (process.argv.includes('--self-test')) {
     .projects[0].status, 'deploy-branch-mismatch');
   assert.equal(assess(withDetails({ ...detail, commit_ref: 'b'.repeat(40) }))
     .projects[0].status, 'deploy-detail-sha-mismatch');
+  // A scan of zero files cannot establish that a deployed bundle was inspected.
+  assert.equal(assess(withDetails({ ...detail, deploy_validations_report: {
+    secret_scan_result: { scannedFilesCount: 0, secretsScanMatches: [],
+      enhancedSecretsScanMatches: [] } } })).projects[0].status,
+    'deploy-secret-scan-unverified');
+  assert.equal(assess(withDetails({ ...detail, deploy_validations_report: {
+    secret_scan_result: { scannedFilesCount: -1, secretsScanMatches: [],
+      enhancedSecretsScanMatches: [] } } })).projects[0].status,
+    'deploy-secret-scan-unverified');
   assert.equal(assess(withDetails({ ...detail, deploy_validations_report: null }))
     .projects[0].status, 'deploy-secret-scan-unverified');
   assert.equal(assess(withDetails({ ...detail, deploy_validations_report: {
