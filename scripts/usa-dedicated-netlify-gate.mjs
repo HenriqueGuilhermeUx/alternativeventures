@@ -29,12 +29,25 @@ export const sites = Object.freeze({
 export function assess(input) {
   const projects = Array.isArray(input?.projects) ? input.projects : [];
   const heads = input?.expectedHeads || {};
+  // Full Netlify deploy details are optional, but missing details never prove
+  // that the isolated artifact or its HTTP security rules were published.
+  const deployDetails = input?.deployDetails || {};
   const entries = Object.entries(sites).map(([name, id]) => {
     const matches = projects.filter(p => p?.id === id);
     const project = matches[0];
     const expectedSha = heads[name];
     const deploy = project?.currentDeploy?.currentDeploy;
-    const actualSha = deploy?.commit_ref || deploy?.commit_sha || null;
+    const detail = deployDetails[id] || null;
+    const detailIdentityOk = Boolean(detail && detail.id === deploy?.id &&
+      detail.site_id === id && detail.state === 'ready');
+    const actualSha = deploy?.commit_ref || deploy?.commit_sha ||
+      (detailIdentityOk ? detail.commit_ref : null);
+    const messages = detailIdentityOk && Array.isArray(detail?.summary?.messages)
+      ? detail.summary.messages : [];
+    // The deploy summary reports processed Netlify _headers and _redirects.
+    // A ready deploy with zero header rules is NOT an isolated USA preview.
+    const noHeaderRules = messages.some(m => /no header rules processed/i.test(m?.title || ''));
+    const noRedirectRules = messages.some(m => /no redirect rules processed/i.test(m?.title || ''));
     const identityOk = matches.length === 1 && project?.name === name;
     const teamOk = project?._enrichedFields?.teamId === expectedTeamId;
     const urlOk = canonicalHostMatches(project, name);
@@ -52,6 +65,10 @@ export function assess(input) {
       else if (deploy?.state !== 'ready' && deploy?.state !== 'current') status = 'deploy-not-ready';
       else if (!shaPattern.test(actualSha || '') ||
                actualSha.toLowerCase() !== expectedSha.toLowerCase()) status = 'deploy-sha-unverified';
+      else if (detail && !detailIdentityOk) status = 'deploy-detail-mismatch';
+      else if (noHeaderRules) status = 'deploy-missing-security-headers';
+      else if (noRedirectRules) status = 'deploy-missing-route-guard';
+      else if (!detail) status = 'requires-deploy-detail-and-independent-http-review';
       else status = 'requires-independent-http-and-visual-review';
     }
     return {
@@ -60,6 +77,9 @@ export function assess(input) {
       team_verified: teamOk, canonical_url_verified: urlOk,
       team_login_protected_all_deploys: protectedForAllDeploys,
       deploy_id: typeof deploy?.id === 'string' ? deploy.id : null,
+      deploy_detail_identity_verified: detailIdentityOk,
+      deploy_reports_no_header_rules: noHeaderRules,
+      deploy_reports_no_redirect_rules: noRedirectRules,
       status, independently_verified_served_bytes: false,
       release_approved: false,
     };
@@ -93,7 +113,27 @@ if (process.argv.includes('--self-test')) {
   } } };
   const altered = [ready, ...projects.slice(1)];
   assert.equal(assess({ projects: altered, expectedHeads }).projects[0].status,
+    'requires-deploy-detail-and-independent-http-review');
+  const detail = { id: 'test-deploy', site_id: sites['av-usa-modo'],
+    state: 'ready', commit_ref: sha,
+    summary: { messages: [
+      { title: '5 redirect rules processed' },
+      { title: '1 header rule processed' },
+    ] } };
+  const withDetails = d => ({ projects: altered, expectedHeads,
+    deployDetails: { [sites['av-usa-modo']]: d } });
+  assert.equal(assess(withDetails(detail)).projects[0].status,
     'requires-independent-http-and-visual-review');
+  assert.equal(assess(withDetails({ ...detail, summary: { messages: [
+    { title: '1 redirect rule processed' },
+    { title: 'No header rules processed' },
+  ] } })).projects[0].status, 'deploy-missing-security-headers');
+  assert.equal(assess(withDetails({ ...detail, summary: { messages: [
+    { title: 'No redirect rules processed' },
+    { title: '1 header rule processed' },
+  ] } })).projects[0].status, 'deploy-missing-route-guard');
+  assert.equal(assess(withDetails({ ...detail, site_id: 'wrong-site' }))
+    .projects[0].status, 'deploy-detail-mismatch');
   assert.equal(assess({ projects: altered, expectedHeads }).release_approved, false);
   assert.equal(assess({ projects: [{ ...ready, _enrichedFields: {
     ...ready._enrichedFields, projectAccessControls: {
@@ -126,7 +166,7 @@ if (process.argv.includes('--self-test')) {
   assert.equal(assess({ projects: altered, expectedHeads: {} }).projects[0].status,
     'unverified-project');
   assert.equal(assess(input).projects.every(p => !p.independently_verified_served_bytes), true);
-  console.log('PASS: USA site IDs, team/host, all-deploy team-login protection, missing deploys, SHA mismatches and non-approval');
+  console.log('PASS: USA site IDs, SSO, deploy detail identity, missing header/redirect rules, SHA mismatches and non-approval');
 } else {
   const index = process.argv.indexOf('--input');
   if (index < 0 || !process.argv[index + 1]) {
