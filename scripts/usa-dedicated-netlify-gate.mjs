@@ -7,6 +7,18 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const shaPattern = /^[a-f0-9]{40}$/i;
+// Team ID is public Netlify project metadata, never an API token.
+const expectedTeamId = '68a5094671bba3abf89c3983';
+
+function canonicalHostMatches(project, name) {
+  try {
+    const url = new URL(project?._enrichedFields?.urls?.primarySiteUrl);
+    return ['http:', 'https:'].includes(url.protocol) &&
+      url.hostname === `${name}.netlify.app` &&
+      (url.pathname === '/' || url.pathname === '') &&
+      !url.username && !url.password && !url.port && !url.search && !url.hash;
+  } catch { return false; }
+}
 export const sites = Object.freeze({
   'av-usa-modo': '241772f0-7d68-4ff3-a20d-aeac9bcbb3f8',
   'av-usa-docwallet': 'a5b1cda8-535a-4db2-b01f-07f41c30be76',
@@ -24,9 +36,12 @@ export function assess(input) {
     const deploy = project?.currentDeploy?.currentDeploy;
     const actualSha = deploy?.commit_ref || deploy?.commit_sha || null;
     const identityOk = matches.length === 1 && project?.name === name;
+    const teamOk = project?._enrichedFields?.teamId === expectedTeamId;
+    const urlOk = canonicalHostMatches(project, name);
+    const projectOk = identityOk && teamOk && urlOk && project?.claimed === true;
     const headOk = shaPattern.test(expectedSha || '');
     let status = 'unverified-project';
-    if (identityOk && headOk) {
+    if (projectOk && headOk) {
       if (!deploy || !Object.keys(deploy).length) status = 'no-deploy';
       else if (deploy?.state !== 'ready' && deploy?.state !== 'current') status = 'deploy-not-ready';
       else if (!shaPattern.test(actualSha || '') ||
@@ -35,6 +50,8 @@ export function assess(input) {
     }
     return {
       project: name, site_id: id, expected_pr_head_sha: headOk ? expectedSha : null,
+      project_identity_verified: Boolean(projectOk),
+      team_verified: teamOk, canonical_url_verified: urlOk,
       deploy_id: typeof deploy?.id === 'string' ? deploy.id : null,
       status, independently_verified_served_bytes: false,
       release_approved: false,
@@ -54,7 +71,10 @@ export function assess(input) {
 if (process.argv.includes('--self-test')) {
   const sha = 'a'.repeat(40);
   const projects = Object.entries(sites).map(([name, id]) => ({
-    name, id, currentDeploy: { state: 'current', currentDeploy: {} },
+    name, id, claimed: true,
+    _enrichedFields: { teamId: expectedTeamId,
+      urls: { primarySiteUrl: `http://${name}.netlify.app` } },
+    currentDeploy: { state: 'current', currentDeploy: {} },
   }));
   const expectedHeads = Object.fromEntries(Object.keys(sites).map(name => [name, sha]));
   const input = { projects, expectedHeads };
@@ -66,6 +86,17 @@ if (process.argv.includes('--self-test')) {
   assert.equal(assess({ projects: altered, expectedHeads }).projects[0].status,
     'requires-independent-http-and-visual-review');
   assert.equal(assess({ projects: altered, expectedHeads }).release_approved, false);
+  assert.equal(assess({ projects: [{ ...ready, _enrichedFields: {
+    ...ready._enrichedFields, teamId: 'wrong-team' } }, ...projects.slice(1)],
+    expectedHeads }).projects[0].status, 'unverified-project');
+  assert.equal(assess({ projects: [{ ...ready, _enrichedFields: {
+    ...ready._enrichedFields, urls: { primarySiteUrl: 'https://modo1.netlify.app' } } },
+    ...projects.slice(1)], expectedHeads }).projects[0].status, 'unverified-project');
+  assert.equal(assess({ projects: [{ ...ready, claimed: false }, ...projects.slice(1)],
+    expectedHeads }).projects[0].status, 'unverified-project');
+  assert.equal(assess({ projects: [{ ...ready, _enrichedFields: {
+    ...ready._enrichedFields, urls: { primarySiteUrl: 'https://av-usa-modo.netlify.app.evil.test' } } },
+    ...projects.slice(1)], expectedHeads }).projects[0].status, 'unverified-project');
   assert.equal(assess({ projects: [{ ...ready, name: 'wrong' }, ...projects.slice(1)],
     expectedHeads }).projects[0].status, 'unverified-project');
   assert.equal(assess({ projects: [ready, ready, ...projects.slice(1)],
@@ -76,7 +107,7 @@ if (process.argv.includes('--self-test')) {
   assert.equal(assess({ projects: altered, expectedHeads: {} }).projects[0].status,
     'unverified-project');
   assert.equal(assess(input).projects.every(p => !p.independently_verified_served_bytes), true);
-  console.log('PASS: four dedicated USA site IDs, empty deployments, mismatched SHAs and non-approval');
+  console.log('PASS: four dedicated USA site IDs, exact team/host, empty deployments, mismatched SHAs and non-approval');
 } else {
   const index = process.argv.indexOf('--input');
   if (index < 0 || !process.argv[index + 1]) {
