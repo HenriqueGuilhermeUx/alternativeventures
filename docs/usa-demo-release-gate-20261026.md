@@ -45,3 +45,20 @@ Read-only inspection of failed jobs at USA PR #91 HEAD `44e1c5b6900da8cae0033ac9
 | DocWallet Workspace Experience V1 | [40354112491](https://github.com/HenriqueGuilhermeUx/nexoffice/actions/runs/40354112491) | DocFlow visible |
 
 These are actual failed assertions, not proof that the underlying Brazilian functions are broken or that failures predate the USA branch. **Baseline main CI comparison remains required**. Keep the four existing issues #92–#95 separate; do not change Brazilian components, rewrite assertions, suppress checks or count 14/18 as an all-green CI. USA isolated browser QA passed on this SHA. The institutional PR HEAD `b9d63c119a6ff6f5dadea0305bb086591b2865a6` passed both preview guard and browser QA; revalidate after any new commit.
+
+## Dedicated Netlify USA access perimeter — 2026-10-28
+
+The four existing **USA-only** Netlify projects were updated to require **team SSO login for all deploys** (not only branch previews). Read-back from Netlify reported `requiresSSOTeamLogin: true` and `whichProjectsRequireSSOTeamLogin: "all"` for each project:
+
+| Project | Site ID |
+| --- | --- |
+| `av-usa-modo` | `241772f0-7d68-4ff3-a20d-aeac9bcbb3f8` |
+| `av-usa-docwallet` | `a5b1cda8-535a-4db2-b01f-07f41c30be76` |
+| `av-usa-finsight` | `9f4a4804-6640-49f5-9769-892e1f283ee3` |
+| `av-usa-nexoffices` | `a0b4370c-0f17-4aca-a07d-0d16f9640c61` |
+
+All four still reported an **empty `currentDeploy.currentDeploy`** at this check. These are protected empty projects, **not published demos**. This perimeter does not prove app-level tenant isolation or secure backend integration. No Brazilian site or shared team default was changed.
+
+**Verification order for the first USA-only deploy:** (1) check project identity, all-deploy SSO protection and exact artifact/PR SHA; (2) confirm Netlify has a real ready deploy; (3) check the unauthenticated perimeter denies content, without interpreting the expected login/401/redirect as application-route failure; (4) using an approved team reviewer session, run the HTTP route/CSP and Chromium visual checks against the actual deployed bytes; (5) keep `release_approved=false` until evidence and independent review are recorded. Never save SSO cookies, credentials or personal data in CI artifacts. The existing unauthenticated HTTP gate expects application 200/404 responses and **must not be used as proof of content validation behind SSO** without an authenticated, non-secret-leaking review mechanism.
+
+The Netlify connector used here can inspect projects and change visitor access, but offers **no artifact upload or Git/build connection**. Do not connect a repository using the Brazilian default build, and do not claim a site is online based on a reserved `.netlify.app` hostname.
