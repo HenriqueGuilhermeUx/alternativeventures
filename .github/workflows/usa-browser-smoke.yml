@@ -10,6 +10,7 @@ on:
       - 'scripts/usa-render-provenance-audit.mjs'
       - 'scripts/usa-netlify-status-audit.mjs'
       - 'scripts/usa-dedicated-netlify-gate.mjs'
+      - 'scripts/usa-dedicated-http-gate.mjs'
       - 'scripts/usa-release-readiness.mjs'
       - 'scripts/usa-nexoffices-ci-debt-audit.mjs'
       - 'scripts/usa-evidence-manifest.mjs'
@@ -63,6 +64,8 @@ jobs:
           node scripts/usa-netlify-status-audit.mjs
       - name: Verify dedicated USA Netlify site release gate (offline fixtures)
         run: node scripts/usa-dedicated-netlify-gate.mjs --self-test
+      - name: Verify dedicated USA Netlify HTTP security probe (offline fixtures)
+        run: node scripts/usa-dedicated-http-gate.mjs --self-test
       - name: Record four separate NexOffices shared-BR CI debts against exact PR HEAD (read-only)
         env:
           GITHUB_TOKEN: ${{ github.token }}
