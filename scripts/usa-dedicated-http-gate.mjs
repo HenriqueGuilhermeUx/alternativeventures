@@ -8,7 +8,7 @@ export const targets = Object.freeze([
   { name: 'av-usa-modo', host: 'av-usa-modo.netlify.app', paths: ['/', '/us', '/us/smartbots', '/us/demo', '/us/smartbots/demo'] },
   { name: 'av-usa-docwallet', host: 'av-usa-docwallet.netlify.app', paths: ['/', '/us', '/us/workspace'] },
   { name: 'av-usa-finsight', host: 'av-usa-finsight.netlify.app', paths: ['/', '/us'] },
-  { name: 'av-usa-nexoffices', host: 'av-usa-nexoffices.netlify.app', paths: ['/us', '/us/'] },
+  { name: 'av-usa-nexoffices', host: 'av-usa-nexoffices.netlify.app', paths: ['/', '/us', '/us/'] },
 ]);
 const blocked = Object.freeze([
   '/app', '/login', '/auth/login', '/admin', '/api/test', '/api/v1/health',
@@ -123,6 +123,9 @@ if (process.argv.includes('--self-test')) {
   assert.equal(assessResponse({ path: '/login', allowed: false, status: 404,
     headers: { ...headers, 'content-type': 'application/javascript' },
     body: '<h1>Page not found</h1>' }).passed, false);
+  // All four standalone bundles intentionally serve an inert USA demo at /.
+  // Treating NexOffices / as forbidden would reject a correct deployed build.
+  assert.ok(targets.every(target => target.paths.includes('/')));
   const calls = [];
   const result = await probe({ get: async url => {
     calls.push(url);
