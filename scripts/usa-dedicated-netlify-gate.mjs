@@ -50,6 +50,9 @@ export function assess(input) {
     };
     // A matching project-level SHA does not excuse contradictory deploy details.
     const detailBranchOk = detailIdentityOk && detail?.branch === expectedBranches[name];
+    // Dedicated USA sites publish only their own production context. A branch
+    // preview or unknown context is not evidence for the canonical site URL.
+    const detailContextOk = detailIdentityOk && detail?.context === 'production';
     const detailShaOk = detailIdentityOk && shaPattern.test(detail?.commit_ref || '') &&
       detail.commit_ref.toLowerCase() === String(expectedSha || '').toLowerCase();
     // Netlify's secret scan is supporting evidence, never a substitute for
@@ -100,6 +103,7 @@ export function assess(input) {
                actualSha.toLowerCase() !== expectedSha.toLowerCase()) status = 'deploy-sha-unverified';
       else if (detail && !detailIdentityOk) status = 'deploy-detail-mismatch';
       else if (detail && !detailBranchOk) status = 'deploy-branch-mismatch';
+      else if (detail && !detailContextOk) status = 'deploy-context-mismatch';
       else if (detail && !detailShaOk) status = 'deploy-detail-sha-mismatch';
       else if (secretScanFindings) status = 'deploy-secret-scan-findings';
       else if (detail && !secretScanOk) status = 'deploy-secret-scan-unverified';
@@ -120,6 +124,7 @@ export function assess(input) {
       deploy_id: typeof deploy?.id === 'string' ? deploy.id : null,
       deploy_detail_identity_verified: detailIdentityOk,
       deploy_detail_branch_verified: Boolean(detailBranchOk),
+      deploy_detail_context_verified: Boolean(detailContextOk),
       deploy_detail_sha_verified: Boolean(detailShaOk),
       deploy_secret_scan_verified: Boolean(secretScanOk),
       deploy_secret_scan_findings: Boolean(secretScanFindings),
@@ -164,6 +169,7 @@ if (process.argv.includes('--self-test')) {
   const detail = { id: 'test-deploy', site_id: sites['av-usa-modo'],
     state: 'ready', commit_ref: sha,
     branch: 'feature/usa-modo-smartbots-localization-20261024',
+    context: 'production',
     deploy_validations_report: { secret_scan_result: {
       scannedFilesCount: 12, secretsScanMatches: [], enhancedSecretsScanMatches: [],
     } },
@@ -195,6 +201,10 @@ if (process.argv.includes('--self-test')) {
     .projects[0].status, 'deploy-detail-mismatch');
   assert.equal(assess(withDetails({ ...detail, branch: 'main' }))
     .projects[0].status, 'deploy-branch-mismatch');
+  for (const context of ['deploy-preview', 'branch-deploy', undefined]) {
+    assert.equal(assess(withDetails({ ...detail, context })).projects[0].status,
+      'deploy-context-mismatch');
+  }
   assert.equal(assess(withDetails({ ...detail, commit_ref: 'b'.repeat(40) }))
     .projects[0].status, 'deploy-detail-sha-mismatch');
   // A scan of zero files cannot establish that a deployed bundle was inspected.
