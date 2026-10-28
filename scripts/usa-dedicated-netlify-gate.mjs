@@ -42,6 +42,27 @@ export function assess(input) {
       detail.site_id === id && detail.state === 'ready');
     const actualSha = deploy?.commit_ref || deploy?.commit_sha ||
       (detailIdentityOk ? detail.commit_ref : null);
+    const expectedBranches = {
+      'av-usa-modo': 'feature/usa-modo-smartbots-localization-20261024',
+      'av-usa-docwallet': 'feature/usa-localized-preview-20261024',
+      'av-usa-finsight': 'feature/usa-localized-preview-20261024',
+      'av-usa-nexoffices': 'feature/usa-localized-preview-20261024',
+    };
+    // A matching project-level SHA does not excuse contradictory deploy details.
+    const detailBranchOk = detailIdentityOk && detail?.branch === expectedBranches[name];
+    const detailShaOk = detailIdentityOk && shaPattern.test(detail?.commit_ref || '') &&
+      detail.commit_ref.toLowerCase() === String(expectedSha || '').toLowerCase();
+    // Netlify's secret scan is supporting evidence, never a substitute for
+    // independently inspecting served files. Missing results fail closed.
+    const secretScan = detailIdentityOk ?
+      detail?.deploy_validations_report?.secret_scan_result : null;
+    const secretScanOk = Number.isSafeInteger(secretScan?.scannedFilesCount) &&
+      secretScan.scannedFilesCount >= 0 &&
+      Array.isArray(secretScan?.secretsScanMatches) &&
+      Array.isArray(secretScan?.enhancedSecretsScanMatches);
+    const secretScanFindings = secretScanOk &&
+      (secretScan.secretsScanMatches.length > 0 ||
+       secretScan.enhancedSecretsScanMatches.length > 0);
     const messages = detailIdentityOk && Array.isArray(detail?.summary?.messages)
       ? detail.summary.messages : [];
     // The deploy summary reports processed Netlify _headers and _redirects.
@@ -78,6 +99,10 @@ export function assess(input) {
       else if (!shaPattern.test(actualSha || '') ||
                actualSha.toLowerCase() !== expectedSha.toLowerCase()) status = 'deploy-sha-unverified';
       else if (detail && !detailIdentityOk) status = 'deploy-detail-mismatch';
+      else if (detail && !detailBranchOk) status = 'deploy-branch-mismatch';
+      else if (detail && !detailShaOk) status = 'deploy-detail-sha-mismatch';
+      else if (secretScanFindings) status = 'deploy-secret-scan-findings';
+      else if (detail && !secretScanOk) status = 'deploy-secret-scan-unverified';
       else if (noHeaderRules || headerRuleCount === 0) status = 'deploy-missing-security-headers';
       else if (noRedirectRules || redirectRuleCount === 0) status = 'deploy-missing-route-guard';
       else if (!detail) status = 'requires-deploy-detail-and-independent-http-review';
@@ -94,6 +119,10 @@ export function assess(input) {
       team_login_protected_all_deploys: protectedForAllDeploys,
       deploy_id: typeof deploy?.id === 'string' ? deploy.id : null,
       deploy_detail_identity_verified: detailIdentityOk,
+      deploy_detail_branch_verified: Boolean(detailBranchOk),
+      deploy_detail_sha_verified: Boolean(detailShaOk),
+      deploy_secret_scan_verified: Boolean(secretScanOk),
+      deploy_secret_scan_findings: Boolean(secretScanFindings),
       deploy_reports_no_header_rules: noHeaderRules,
       deploy_reports_no_redirect_rules: noRedirectRules,
       processed_header_rule_count: headerRuleCount,
@@ -134,6 +163,10 @@ if (process.argv.includes('--self-test')) {
     'requires-deploy-detail-and-independent-http-review');
   const detail = { id: 'test-deploy', site_id: sites['av-usa-modo'],
     state: 'ready', commit_ref: sha,
+    branch: 'feature/usa-modo-smartbots-localization-20261024',
+    deploy_validations_report: { secret_scan_result: {
+      scannedFilesCount: 12, secretsScanMatches: [], enhancedSecretsScanMatches: [],
+    } },
     summary: { messages: [
       { title: '6 redirect rules processed' },
       { title: '1 header rule processed' },
@@ -160,6 +193,16 @@ if (process.argv.includes('--self-test')) {
   ] } })).projects[0].status, 'deploy-missing-route-guard');
   assert.equal(assess(withDetails({ ...detail, site_id: 'wrong-site' }))
     .projects[0].status, 'deploy-detail-mismatch');
+  assert.equal(assess(withDetails({ ...detail, branch: 'main' }))
+    .projects[0].status, 'deploy-branch-mismatch');
+  assert.equal(assess(withDetails({ ...detail, commit_ref: 'b'.repeat(40) }))
+    .projects[0].status, 'deploy-detail-sha-mismatch');
+  assert.equal(assess(withDetails({ ...detail, deploy_validations_report: null }))
+    .projects[0].status, 'deploy-secret-scan-unverified');
+  assert.equal(assess(withDetails({ ...detail, deploy_validations_report: {
+    secret_scan_result: { scannedFilesCount: 12, secretsScanMatches: ['redacted-finding'],
+      enhancedSecretsScanMatches: [] } } }))
+    .projects[0].status, 'deploy-secret-scan-findings');
   assert.equal(assess({ projects: altered, expectedHeads }).release_approved, false);
   assert.equal(assess({ projects: [{ ...ready, _enrichedFields: {
     ...ready._enrichedFields, projectAccessControls: {
@@ -192,7 +235,7 @@ if (process.argv.includes('--self-test')) {
   assert.equal(assess({ projects: altered, expectedHeads: {} }).projects[0].status,
     'unverified-project');
   assert.equal(assess(input).projects.every(p => !p.independently_verified_served_bytes), true);
-  console.log('PASS: USA site IDs, SSO, deploy detail identity, missing header/redirect rules, SHA mismatches and non-approval');
+  console.log('PASS: USA site IDs, SSO, deploy branch/SHA, secret scan, missing security rules and non-approval');
 } else {
   const index = process.argv.indexOf('--input');
   if (index < 0 || !process.argv[index + 1]) {
