@@ -25,7 +25,7 @@ function ruleCount(messages, kind) {
   return matches.length === 1 ? Number(matches[0][1]) : null;
 }
 
-export function assess({ prHead, comparison, project, deploy } = {}) {
+export function assess({ prHead, comparison, resolvedBranchHeadSha, project, deploy } = {}) {
   const problems = [];
   const check = (condition, message) => { if (!condition) problems.push(message); };
   check(SHA.test(prHead || '') && prHead === PR, 'PR HEAD not pinned to reviewed SHA');
@@ -34,9 +34,12 @@ export function assess({ prHead, comparison, project, deploy } = {}) {
     comparison.ahead_by <= 10 &&
     comparison?.base_commit?.sha === prHead &&
     comparison?.merge_base_commit?.sha === prHead &&
-    SHA.test(comparison?.head_commit_sha || comparison?.head || ''),
+    comparison?.base === prHead && comparison?.head === BRANCH &&
+    SHA.test(resolvedBranchHeadSha || ''),
     'Deploy branch ancestry not independently proven');
-  const comparedHead = comparison?.head_commit_sha || comparison?.head;
+  // GitHub compare returns `head` as the branch REF, not its commit SHA.
+  // Require a separate GitHub commit/branch resolution before trusting deploy.commit_ref.
+  const comparedHead = resolvedBranchHeadSha;
   const comparedFiles = Array.isArray(comparison?.files)
     ? comparison.files.map(f => f.filename).sort() : [];
   check(JSON.stringify(comparedFiles) === JSON.stringify(FILES),
@@ -89,9 +92,9 @@ export function assess({ prHead, comparison, project, deploy } = {}) {
 if (process.argv.includes('--self-test')) {
   const head = '5bb5b8c17c8b83d0de6ea5c0c517addfbe5fdaa8';
   const comparison = {
-    status: 'ahead', ahead_by: 5, behind_by: 0,
+    status: 'ahead', ahead_by: 5, behind_by: 0, base: PR, head: BRANCH,
     base_commit: { sha: PR }, merge_base_commit: { sha: PR },
-    head_commit_sha: head, files: FILES.map(filename => ({ filename })),
+    files: FILES.map(filename => ({ filename })),
   };
   const project = {
     id: SITE, name: 'av-usa-modo', claimed: true,
@@ -112,12 +115,16 @@ if (process.argv.includes('--self-test')) {
       { title: 'No functions deployed' }, { title: 'No edge functions deployed' },
     ] },
   };
-  const base = { prHead: PR, comparison, project, deploy };
+  const base = { prHead: PR, comparison, resolvedBranchHeadSha: head, project, deploy };
   assert.equal(assess(base).status, 'metadata-verified-requires-http-and-visual-review');
   assert.equal(assess(base).release_approved, false);
   const negatives = [
     { prHead: 'a'.repeat(40) },
     { comparison: { ...comparison, behind_by: 1 } },
+    { comparison: { ...comparison, head: 'main' } },
+    { comparison: { ...comparison, base: 'a'.repeat(40) } },
+    { resolvedBranchHeadSha: undefined },
+    { resolvedBranchHeadSha: PR },
     { comparison: { ...comparison, files: [...comparison.files, { filename: 'apps/web/src/Root.tsx' }] } },
     { project: { ...project, id: 'wrong' } },
     { project: { ...project, _enrichedFields: { ...project._enrichedFields,
@@ -144,7 +151,7 @@ if (process.argv.includes('--self-test')) {
     assert.equal(result.status, 'blocked');
     assert.equal(result.release_approved, false);
   }
-  console.log('PASS: USA MODO deploy-branch ancestry, exact SHA, allowlist, SSO, secrets and fail-closed HTTP gate');
+  console.log('PASS: USA MODO deploy-branch ancestry, independently resolved branch SHA, allowlist, SSO, secrets and static-only gate');
 } else {
   const idx = process.argv.indexOf('--input');
   if (idx < 0 || !process.argv[idx + 1]) {
