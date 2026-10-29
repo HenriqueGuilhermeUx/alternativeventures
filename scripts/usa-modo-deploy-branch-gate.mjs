@@ -18,6 +18,17 @@ const FILES = [
 ].sort();
 const SHA = /^[a-f0-9]{40}$/i;
 
+// Require exact Netlify-owned hostnames, not a plausible site name in a
+// redirect URL, userinfo, path, query string or attacker-controlled suffix.
+function exactSiteUrl(value, hostname, allowedProtocols) {
+  try {
+    const url = new URL(value);
+    return allowedProtocols.includes(url.protocol) && url.hostname === hostname &&
+      !url.username && !url.password && !url.port &&
+      (url.pathname === '/' || url.pathname === '') && !url.search && !url.hash;
+  } catch { return false; }
+}
+
 function ruleCount(messages, kind) {
   const matches = (Array.isArray(messages) ? messages : [])
     .map(x => String(x?.title || '').match(new RegExp('^([0-9]+) ' + kind + ' rules? processed$')))
@@ -47,6 +58,13 @@ export function assess({ prHead, comparison, resolvedBranchHeadSha, project, dep
   check(project?.id === SITE && project?.name === 'av-usa-modo' &&
     project?.claimed === true && project?._enrichedFields?.teamId === TEAM,
     'Wrong Netlify site or team');
+  check(exactSiteUrl(project?._enrichedFields?.urls?.primarySiteUrl,
+    'av-usa-modo.netlify.app', ['http:', 'https:']) &&
+    exactSiteUrl(deploy?.ssl_url, 'av-usa-modo.netlify.app', ['https:']) &&
+    exactSiteUrl(deploy?.links?.alias, 'av-usa-modo.netlify.app', ['https:']) &&
+    exactSiteUrl(deploy?.links?.permalink,
+      String(deploy?.id || '') + '--av-usa-modo.netlify.app', ['https:']),
+    'Canonical project, HTTPS deploy and immutable permalink hosts not verified');
   const access = project?._enrichedFields?.projectAccessControls;
   check(access?.requiresSSOTeamLogin === true &&
     access?.whichProjectsRequireSSOTeamLogin === 'all' &&
@@ -98,7 +116,9 @@ if (process.argv.includes('--self-test')) {
   };
   const project = {
     id: SITE, name: 'av-usa-modo', claimed: true,
-    _enrichedFields: { teamId: TEAM, projectAccessControls: {
+    _enrichedFields: { teamId: TEAM,
+      urls: { primarySiteUrl: 'http://av-usa-modo.netlify.app' },
+      projectAccessControls: {
       requiresSSOTeamLogin: true, whichProjectsRequireSSOTeamLogin: 'all',
       requiresPassword: false } },
     currentDeploy: { currentDeploy: { id: 'sample-deploy' } },
@@ -106,6 +126,9 @@ if (process.argv.includes('--self-test')) {
   const deploy = {
     id: 'sample-deploy', site_id: SITE, state: 'ready',
     context: 'production', branch: BRANCH, commit_ref: head,
+    ssl_url: 'https://av-usa-modo.netlify.app',
+    links: { alias: 'https://av-usa-modo.netlify.app',
+      permalink: 'https://sample-deploy--av-usa-modo.netlify.app' },
     available_functions: [], required_functions: [], required_server: [],
     required_edge_functions: [], server: null, edge_functions_present: null,
     deploy_validations_report: { secret_scan_result: {
@@ -127,6 +150,16 @@ if (process.argv.includes('--self-test')) {
     { resolvedBranchHeadSha: PR },
     { comparison: { ...comparison, files: [...comparison.files, { filename: 'apps/web/src/Root.tsx' }] } },
     { project: { ...project, id: 'wrong' } },
+    { project: { ...project, _enrichedFields: { ...project._enrichedFields,
+      urls: { primarySiteUrl: 'https://av-usa-modo.netlify.app.evil.test' } } } },
+    { project: { ...project, _enrichedFields: { ...project._enrichedFields,
+      urls: { primarySiteUrl: 'https://av-usa-modo.netlify.app@evil.test' } } } },
+    { deploy: { ...deploy, ssl_url: 'http://av-usa-modo.netlify.app' } },
+    { deploy: { ...deploy, links: { ...deploy.links,
+      alias: 'https://av-usa-modo.netlify.app.evil.test' } } },
+    { deploy: { ...deploy, links: { ...deploy.links,
+      permalink: 'https://wrong--av-usa-modo.netlify.app' } } },
+    { deploy: { ...deploy, links: null } },
     { project: { ...project, _enrichedFields: { ...project._enrichedFields,
       projectAccessControls: { requiresSSOTeamLogin: false } } } },
     { deploy: { ...deploy, branch: 'main' } },
