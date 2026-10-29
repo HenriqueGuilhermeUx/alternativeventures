@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'site/us/**'
+      - 'docs/usa-netlify-first-deploy-handoff-20261029.md'
       - 'scripts/verify-usa-portfolio.mjs'
       - '.github/workflows/usa-portfolio-guard.yml'
 jobs:
