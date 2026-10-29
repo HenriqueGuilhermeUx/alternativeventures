@@ -47,6 +47,13 @@ function unsafeAnchorLinks(body, currentPath) {
       issues.push('ambiguous-anchor-url');
       continue;
     }
+    // The synthetic base URL is only for resolving relative paths. Never allow
+    // an absolute URL to that synthetic host (or any other external origin).
+    if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('//') ||
+        href.startsWith('\\')) {
+      issues.push('unsafe-navigation-anchor');
+      continue;
+    }
     try {
       const url = new URL(href, 'https://usa-preview.invalid' + currentPath);
       if (url.origin !== 'https://usa-preview.invalid' ||
@@ -156,6 +163,7 @@ if (process.argv.includes('--self-test')) {
     '<a href="/us/demo">Preview</a></body>') }).passed, true);
   for (const href of [
     'https://trynexa.com.br', '//trynexa.com.br', 'javascript:alert(1)',
+    'https://usa-preview.invalid/us', 'mailto:real@example.com',
     '/login', '/api/v1/health', '../app', '/br', 'https://example.com',
     '&#104;ttps://example.com',
   ]) {
