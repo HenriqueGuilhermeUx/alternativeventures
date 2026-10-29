@@ -36,6 +36,7 @@ export function assess({ prHead, comparison, project, deploy } = {}) {
     comparison?.merge_base_commit?.sha === prHead &&
     SHA.test(comparison?.head_commit_sha || comparison?.head || ''),
     'Deploy branch ancestry not independently proven');
+  const comparedHead = comparison?.head_commit_sha || comparison?.head;
   const comparedFiles = Array.isArray(comparison?.files)
     ? comparison.files.map(f => f.filename).sort() : [];
   check(JSON.stringify(comparedFiles) === JSON.stringify(FILES),
@@ -51,7 +52,7 @@ export function assess({ prHead, comparison, project, deploy } = {}) {
     deploy?.site_id === SITE && deploy?.state === 'ready' &&
     deploy?.context === 'production', 'Current production-context deploy not verified');
   check(deploy?.branch === BRANCH && SHA.test(deploy?.commit_ref || '') &&
-    deploy?.commit_ref === comparison?.head_commit_sha,
+    deploy?.commit_ref === comparedHead,
     'Deploy branch or exact commit differs from GitHub comparison');
   const scan = deploy?.deploy_validations_report?.secret_scan_result;
   check(Number.isSafeInteger(scan?.scannedFilesCount) &&
