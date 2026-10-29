@@ -89,9 +89,11 @@ try {
     }));
     for (const target of navigationTargets) {
       assert.ok(target.exists, 'Broken internal navigation fragment: ' + target.href);
-      assert.ok(target.href.startsWith('#') || target.href === '/' || target.href === '/us/' ||
-        target.href.startsWith('https://'), 'Unapproved link scheme or destination: ' + target.href);
+      assert.ok(target.href.startsWith('#') || target.href.startsWith('https://'),
+        'USA preview cannot navigate to Brazilian or unapproved local routes: ' + target.href);
     }
+    assert.equal(await page.locator('a[href="/"], a[href="/us/"], a[hreflang="pt-BR"]').count(), 0,
+      'USA institutional preview must not link into Brazilian routes');
     const allIds = await page.locator('[id]').evaluateAll(elements => elements.map(el => el.id));
     assert.equal(new Set(allIds).size, allIds.length, 'Duplicate DOM ids break label and fragment navigation');
 
