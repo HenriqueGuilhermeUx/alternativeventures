@@ -5,7 +5,8 @@
 import assert from 'node:assert/strict';
 
 export const targets = Object.freeze([
-  { name: 'av-usa-modo', host: 'av-usa-modo.netlify.app', paths: ['/', '/us', '/us/smartbots', '/us/demo', '/us/smartbots/demo'] },
+  // The published MODO-only branch deliberately omits SmartBots; never accept its routes as live.
+  { name: 'av-usa-modo', host: 'av-usa-modo.netlify.app', paths: ['/', '/us', '/us/demo'] },
   { name: 'av-usa-docwallet', host: 'av-usa-docwallet.netlify.app', paths: ['/', '/us', '/us/workspace'] },
   { name: 'av-usa-finsight', host: 'av-usa-finsight.netlify.app', paths: ['/', '/us'] },
   { name: 'av-usa-nexoffices', host: 'av-usa-nexoffices.netlify.app', paths: ['/', '/us', '/us/'] },
@@ -13,7 +14,8 @@ export const targets = Object.freeze([
 const blocked = Object.freeze([
   '/app', '/login', '/auth/login', '/admin', '/api/test', '/api/v1/health',
   '/checkout', '/billing', '/pix', '/wallet', '/pj', '/office', '/br',
-  '/us/login', '/us/admin', '/us/api', '/us/checkout', '/nonexistent-usa-probe',
+  '/us/login', '/us/admin', '/us/api', '/us/checkout',
+  '/us/smartbots', '/us/smartbots/demo', '/nonexistent-usa-probe',
 ]);
 
 function directives(value) {
@@ -154,6 +156,9 @@ if (process.argv.includes('--self-test')) {
   // All four standalone bundles intentionally serve an inert USA demo at /.
   // Treating NexOffices / as forbidden would reject a correct deployed build.
   assert.ok(targets.every(target => target.paths.includes('/')));
+  assert.deepEqual(targets[0].paths, ['/', '/us', '/us/demo']);
+  assert.ok(blocked.includes('/us/smartbots') && blocked.includes('/us/smartbots/demo'));
+  assert.ok(!targets[0].paths.some(path => path.includes('smartbots')));
   const calls = [];
   const result = await probe({ get: async url => {
     calls.push(url);
