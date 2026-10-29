@@ -117,7 +117,6 @@ export function assess(input) {
       else if (detail && !detailShaOk) status = 'deploy-detail-sha-mismatch';
       else if (secretScanFindings) status = 'deploy-secret-scan-findings';
       else if (detail && !secretScanOk) status = 'deploy-secret-scan-unverified';
-      else if (detail && !staticOnlyOk) status = 'deploy-executable-surface-unverified';
       else if (noHeaderRules || headerRuleCount === 0) status = 'deploy-missing-security-headers';
       else if (noRedirectRules || redirectRuleCount === 0) status = 'deploy-missing-route-guard';
       else if (!detail) status = 'requires-deploy-detail-and-independent-http-review';
@@ -125,6 +124,7 @@ export function assess(input) {
         status = 'deploy-security-rules-unverified';
       else if (name === 'av-usa-modo' && redirectRuleCount < 6)
         status = 'deploy-insufficient-route-guard';
+      else if (!staticOnlyOk) status = 'deploy-executable-surface-unverified';
       else status = 'requires-independent-http-and-visual-review';
     }
     return {
