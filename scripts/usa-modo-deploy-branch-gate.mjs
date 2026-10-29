@@ -55,6 +55,19 @@ export function assess({ prHead, comparison, resolvedBranchHeadSha, project, dep
     ? comparison.files.map(f => f.filename).sort() : [];
   check(JSON.stringify(comparedFiles) === JSON.stringify(FILES),
     'Unexpected deployment-branch changes require manual review');
+  // The GitHub compare response can be incomplete or contain a rename/delete
+  // while retaining an allowlisted filename. Require a complete, internally
+  // consistent diff of modifications only before trusting branch provenance.
+  check(comparison?.too_large !== true &&
+    comparison?.total_commits === comparison?.ahead_by &&
+    Array.isArray(comparison?.files) && comparison.files.length === FILES.length &&
+    comparison.files.every(file =>
+      file?.status === 'modified' && file?.previous_filename == null &&
+      Number.isSafeInteger(file?.additions) && file.additions >= 0 &&
+      Number.isSafeInteger(file?.deletions) && file.deletions >= 0 &&
+      Number.isSafeInteger(file?.changes) &&
+      file.changes === file.additions + file.deletions),
+    'Deploy branch comparison is truncated, renamed, deleted or internally inconsistent');
   check(project?.id === SITE && project?.name === 'av-usa-modo' &&
     project?.claimed === true && project?._enrichedFields?.teamId === TEAM,
     'Wrong Netlify site or team');
@@ -110,9 +123,11 @@ export function assess({ prHead, comparison, resolvedBranchHeadSha, project, dep
 if (process.argv.includes('--self-test')) {
   const head = '5bb5b8c17c8b83d0de6ea5c0c517addfbe5fdaa8';
   const comparison = {
-    status: 'ahead', ahead_by: 5, behind_by: 0, base: PR, head: BRANCH,
+    status: 'ahead', ahead_by: 5, behind_by: 0, total_commits: 5,
+    too_large: null, base: PR, head: BRANCH,
     base_commit: { sha: PR }, merge_base_commit: { sha: PR },
-    files: FILES.map(filename => ({ filename })),
+    files: FILES.map(filename => ({ filename, status: 'modified',
+      additions: 1, deletions: 1, changes: 2, previous_filename: null })),
   };
   const project = {
     id: SITE, name: 'av-usa-modo', claimed: true,
@@ -146,6 +161,16 @@ if (process.argv.includes('--self-test')) {
     { comparison: { ...comparison, behind_by: 1 } },
     { comparison: { ...comparison, head: 'main' } },
     { comparison: { ...comparison, base: 'a'.repeat(40) } },
+    { comparison: { ...comparison, too_large: true } },
+    { comparison: { ...comparison, total_commits: 4 } },
+    { comparison: { ...comparison, files: comparison.files.map((f, i) =>
+      i === 0 ? { ...f, status: 'removed' } : f) } },
+    { comparison: { ...comparison, files: comparison.files.map((f, i) =>
+      i === 0 ? { ...f, status: 'renamed', previous_filename: 'apps/web/src/Root.tsx' } : f) } },
+    { comparison: { ...comparison, files: comparison.files.map((f, i) =>
+      i === 0 ? { ...f, changes: 0 } : f) } },
+    { comparison: { ...comparison, files: comparison.files.map((f, i) =>
+      i === 0 ? { ...f, additions: -1 } : f) } },
     { resolvedBranchHeadSha: undefined },
     { resolvedBranchHeadSha: PR },
     { comparison: { ...comparison, files: [...comparison.files, { filename: 'apps/web/src/Root.tsx' }] } },
