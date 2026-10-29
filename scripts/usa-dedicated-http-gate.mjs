@@ -33,6 +33,31 @@ function directives(value) {
   return { rules, duplicates };
 }
 
+// Static USA previews must not navigate to Brazilian app routes or outside
+// the current site. CSP blocks network calls, but does not stop a user from
+// following a link. This is a conservative HTML anchor audit, not a DOM parser.
+function unsafeAnchorLinks(body, currentPath) {
+  const issues = [];
+  for (const tag of String(body || '').match(/<a\b[^>]*>/gi) || []) {
+    const match = tag.match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    if (!match) continue;
+    const href = (match[1] ?? match[2] ?? match[3]).trim();
+    // Reject entity-encoded URLs: source text and browser navigation could differ.
+    if (!href || /&(?:#\d+|#x[0-9a-f]+|[a-z]+);/i.test(href)) {
+      issues.push('ambiguous-anchor-url');
+      continue;
+    }
+    try {
+      const url = new URL(href, 'https://usa-preview.invalid' + currentPath);
+      if (url.origin !== 'https://usa-preview.invalid' ||
+          /^\/(?:app|login|auth|admin|api|checkout|billing|pix|wallet|pj|office|br)(?:\/|$)/i.test(url.pathname)) {
+        issues.push('unsafe-navigation-anchor');
+      }
+    } catch { issues.push('invalid-navigation-anchor'); }
+  }
+  return issues;
+}
+
 export function assessResponse({ path, allowed, status, headers, body, redirected = false }) {
   const errors = [];
   if (redirected || (status >= 300 && status < 400)) errors.push('redirect');
@@ -65,6 +90,7 @@ export function assessResponse({ path, allowed, status, headers, body, redirecte
     if (!/^text\/html(?:;|$)/i.test(String(headers?.['content-type'] || ''))) errors.push('unexpected-content-type');
     if (!/<html\s[^>]*lang=["']en-US["']/i.test(String(body || ''))) errors.push('missing-en-us-html');
     if (!/<meta\s[^>]*name=["']robots["'][^>]*content=["'][^"']*noindex/i.test(String(body || ''))) errors.push('missing-noindex-meta');
+    errors.push(...unsafeAnchorLinks(body, path));
   }
   if (!allowed && status === 404) {
     const deniedBody = String(body || '');
@@ -126,6 +152,19 @@ if (process.argv.includes('--self-test')) {
     'content-security-policy': "default-src 'self'; script-src 'self'; img-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'" };
   const good = { path: '/us', allowed: true, status: 200, headers, body: html };
   assert.equal(assessResponse(good).passed, true);
+  assert.equal(assessResponse({ ...good, body: html.replace('</body>',
+    '<a href="/us/demo">Preview</a></body>') }).passed, true);
+  for (const href of [
+    'https://trynexa.com.br', '//trynexa.com.br', 'javascript:alert(1)',
+    '/login', '/api/v1/health', '../app', '/br', 'https://example.com',
+    '&#104;ttps://example.com',
+  ]) {
+    const body = html.replace('</body>', '<a href="' + href + '">Go</a></body>');
+    const result = assessResponse({ ...good, body });
+    assert.equal(result.passed, false, 'Unsafe navigation must fail: ' + href);
+    assert.ok(result.errors.some(x => /anchor/.test(x)));
+  }
+
   // A permissive first occurrence must not be hidden by a strict duplicate.
   for (const directive of ['connect-src', 'script-src', 'frame-ancestors']) {
     const original = headers['content-security-policy'];
