@@ -4,6 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 
 const PR = '730e1e34088c2d983606217aa21a9cc6a121a951';
 const SITE = '241772f0-7d68-4ff3-a20d-aeac9bcbb3f8';
@@ -17,6 +18,7 @@ const FILES = [
   'scripts/usa-netlify-isolation-check.mjs',
 ].sort();
 const SHA = /^[a-f0-9]{40}$/i;
+const DEPLOY_SHA = '5bb5b8c17c8b83d0de6ea5c0c517addfbe5fdaa8';
 // Reviewed Git blob IDs at the immutable, independently resolved USA deploy SHA.
 // A filename allowlist alone cannot detect a malicious edit inside an allowed file.
 const REVIEWED_SOURCE_BLOBS = Object.freeze({
@@ -141,6 +143,43 @@ export function assess({ prHead, comparison, resolvedBranchHeadSha, sourceFiles,
   };
 }
 
+// Read-only exact-commit source verification. This is stronger than a file-name
+// allowlist: an unexpected edit within an allowed USA file must block review.
+// GitHub API contents are fetched at the independently resolved immutable SHA.
+function gitBlob(bytes) {
+  return createHash('sha1').update('blob ' + bytes.length + '\\0').update(bytes).digest('hex');
+}
+async function github(path) {
+  const headers = { Accept: 'application/vnd.github+json',
+    'User-Agent': 'av-usa-modo-source-attestation' };
+  if (process.env.GITHUB_TOKEN) headers.Authorization = 'Bearer ' + process.env.GITHUB_TOKEN;
+  const response = await fetch('https://api.github.com' + path, {
+    headers, redirect: 'error', signal: AbortSignal.timeout(20000) });
+  if (!response.ok) throw new Error('GitHub read failed: HTTP ' + response.status);
+  return response.json();
+}
+async function checkReviewedSource() {
+  const prefix = '/repos/HenriqueGuilhermeUx/modo';
+  const branch = await github(prefix + '/branches/' + BRANCH);
+  const resolved = branch?.commit?.sha;
+  assert.equal(resolved, DEPLOY_SHA, 'MODO USA deploy branch HEAD changed; review required');
+  const rows = [];
+  for (const path of FILES) {
+    const file = await github(prefix + '/contents/' +
+      path.split('/').map(encodeURIComponent).join('/') + '?ref=' + resolved);
+    assert.equal(file?.type, 'file', 'Expected a regular source file: ' + path);
+    assert.equal(file?.path, path, 'Unexpected source path');
+    assert.equal(file?.encoding, 'base64', 'Source bytes unavailable');
+    const bytes = Buffer.from(file.content.replace(/\\s/g, ''), 'base64');
+    assert.equal(gitBlob(bytes), file.sha, 'GitHub source blob bytes mismatch: ' + path);
+    rows.push({ path, ref: resolved, sha: file.sha });
+  }
+  assert.deepEqual(rows.map(x => x.path).sort(), FILES);
+  assert.ok(rows.every(x => x.sha === REVIEWED_SOURCE_BLOBS[x.path]),
+    'MODO USA reviewed source blob changed; manual re-review required');
+  console.log('PASS: MODO USA exact deploy SHA and five immutable source blobs verified; NOT RELEASE APPROVED');
+}
+
 if (process.argv.includes('--self-test')) {
   const head = '5bb5b8c17c8b83d0de6ea5c0c517addfbe5fdaa8';
   const comparison = {
@@ -241,10 +280,12 @@ if (process.argv.includes('--self-test')) {
     assert.equal(result.release_approved, false);
   }
   console.log('PASS: USA MODO deploy-branch ancestry, immutable source blob pins, SSO, secrets and static-only gate');
+} else if (process.argv.includes('--source-check')) {
+  await checkReviewedSource();
 } else {
   const idx = process.argv.indexOf('--input');
   if (idx < 0 || !process.argv[idx + 1]) {
-    console.error('Usage: node scripts/usa-modo-deploy-branch-gate.mjs --input snapshot.json');
+    console.error('Usage: node scripts/usa-modo-deploy-branch-gate.mjs --input snapshot.json | --self-test | --source-check');
     process.exitCode = 2;
   } else {
     const input = JSON.parse(readFileSync(process.argv[idx + 1], 'utf8'));
