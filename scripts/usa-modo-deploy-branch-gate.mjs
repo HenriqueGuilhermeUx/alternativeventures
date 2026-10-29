@@ -147,7 +147,7 @@ export function assess({ prHead, comparison, resolvedBranchHeadSha, sourceFiles,
 // allowlist: an unexpected edit within an allowed USA file must block review.
 // GitHub API contents are fetched at the independently resolved immutable SHA.
 function gitBlob(bytes) {
-  return createHash('sha1').update('blob ' + bytes.length + '\\0').update(bytes).digest('hex');
+  return createHash('sha1').update('blob ' + bytes.length + String.fromCharCode(0)).update(bytes).digest('hex');
 }
 async function github(path) {
   const headers = { Accept: 'application/vnd.github+json',
