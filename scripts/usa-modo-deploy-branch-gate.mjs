@@ -170,7 +170,7 @@ async function checkReviewedSource() {
     assert.equal(file?.type, 'file', 'Expected a regular source file: ' + path);
     assert.equal(file?.path, path, 'Unexpected source path');
     assert.equal(file?.encoding, 'base64', 'Source bytes unavailable');
-    const bytes = Buffer.from(file.content.replace(/\\s/g, ''), 'base64');
+    const bytes = Buffer.from(file.content, 'base64');
     assert.equal(gitBlob(bytes), file.sha, 'GitHub source blob bytes mismatch: ' + path);
     rows.push({ path, ref: resolved, sha: file.sha });
   }
