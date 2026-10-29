@@ -257,7 +257,7 @@ if (process.argv.includes('--self-test')) {
     'requires-independent-modo-branch-provenance-gate');
   assert.equal(assess(withDetails(modoDeployBranch)).release_approved, false);
   assert.equal(assess(withDetails({ ...modoDeployBranch, branch: 'main' }))
-    .projects[0].status, 'deploy-sha-unverified');
+    .projects[0].status, 'deploy-branch-mismatch');
   for (const context of ['deploy-preview', 'branch-deploy', undefined]) {
     assert.equal(assess(withDetails({ ...detail, context })).projects[0].status,
       'deploy-context-mismatch');
