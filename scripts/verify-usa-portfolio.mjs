@@ -29,6 +29,12 @@ assert.deepEqual(directives.get("style-src"), ["'self'", "'unsafe-inline'"], "US
 assert.match(html, /<title>Alternative Ventures USA/i);
 assert.match(html, /<a class="skip-link" href="#main-content">Skip to main content<\/a>/, "Keyboard skip link missing");
 assert.match(html, /<main id="main-content" tabindex="-1">/, "Skip link target must be focusable");
+assert.match(html, /<a href="#main-content" class="wordmark"/,
+  "USA brand navigation must stay inside the isolated preview");
+assert.ok(!/<a\b[^>]*href=["']\/(?:["']|\?)/i.test(html),
+  "USA preview must not navigate to the Brazilian site root");
+assert.ok(!/hreflang=["']pt-BR["']/i.test(html),
+  "USA preview must not advertise Brazilian routes");
 assert.match(html, /\.skip-link:focus\{top:12px\}/, "Skip link must be visible on keyboard focus");
 const sectionIds = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
 assert.equal(new Set(sectionIds).size, sectionIds.length, "Duplicate section ids");
