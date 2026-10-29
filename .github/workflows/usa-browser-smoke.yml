@@ -12,6 +12,7 @@ on:
       - 'scripts/usa-netlify-status-audit.mjs'
       - 'scripts/usa-dedicated-netlify-gate.mjs'
       - 'scripts/usa-modo-deploy-branch-gate.mjs'
+      - 'scripts/usa-smartbots-deploy-provenance-gate.mjs'
       - 'scripts/usa-dedicated-http-gate.mjs'
       - 'scripts/usa-release-readiness.mjs'
       - 'scripts/usa-nexoffices-ci-debt-audit.mjs'
@@ -68,6 +69,8 @@ jobs:
         run: node scripts/usa-dedicated-netlify-gate.mjs --self-test
       - name: Verify isolated MODO USA deployment-branch provenance (offline fixtures)
         run: node scripts/usa-modo-deploy-branch-gate.mjs --self-test
+      - name: Verify SmartBots USA deployment branch divergence and static-only metadata (offline fixtures)
+        run: node scripts/usa-smartbots-deploy-provenance-gate.mjs --self-test
       - name: Verify dedicated USA Netlify HTTP security probe (offline fixtures)
         run: node scripts/usa-dedicated-http-gate.mjs --self-test
       - name: Record four separate NexOffices shared-BR CI debts against exact PR HEAD (read-only)
