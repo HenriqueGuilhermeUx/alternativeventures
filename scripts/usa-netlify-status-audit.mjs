@@ -8,7 +8,8 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 const owner = 'HenriqueGuilhermeUx';
 const shaPattern = /^[a-f0-9]{40}$/i;
 const targets = [
-  ['MODO / SmartBots', 'modo', 163, 'feature/usa-modo-smartbots-localization-20261024', 'netlify/modo1/deploy-preview', 'deploy-preview-163--modo1.netlify.app'],
+  // Verify the dedicated USA MODO project, never the legacy modo1 project. SmartBots has a separate provenance gate.
+  ['MODO USA', 'modo', 163, 'feature/usa-modo-smartbots-localization-20261024', 'netlify/av-usa-modo/deploy-preview', 'deploy-preview-163--av-usa-modo.netlify.app'],
   ['DocWallet', 'docwallet', 12, 'feature/usa-localized-preview-20261024', 'netlify/docwallet/deploy-preview', 'deploy-preview-12--docwallet.netlify.app'],
   ['F-Insight', 'f-insight', 26, 'feature/usa-localized-preview-20261024', 'netlify/f-insight/deploy-preview', 'deploy-preview-26--f-insight.netlify.app'],
   ['Institutional', 'alternativeventures', 3, 'feature/usa-portfolio-preview-20261024', 'netlify/bucolic-smakager-91800f/deploy-preview', 'deploy-preview-3--bucolic-smakager-91800f.netlify.app'],
@@ -50,6 +51,10 @@ if (process.argv.includes('--self-test')) {
   const good = [{ context: target[4], state: 'success', target_url: 'https://' + target[5] }];
   assert.equal(assess(target, pr, good).classification, 'github-status-success-only');
   assert.equal(assess(target, pr, good).independently_verified_live_deploy_sha, false);
+  // A successful status from the Brazilian/legacy Netlify project cannot attest the USA project.
+  assert.equal(assess(target, pr, [{ context: 'netlify/modo1/deploy-preview', state: 'success',
+    target_url: 'https://deploy-preview-163--modo1.netlify.app' }]).classification, 'unverified');
+  assert.equal(assess(target, pr, [{ ...good[0], target_url: 'https://deploy-preview-163--modo1.netlify.app' }]).classification, 'unverified');
   for (const [p, statuses] of [
     [{ ...pr, draft: false }, good],
     [pr, []],
