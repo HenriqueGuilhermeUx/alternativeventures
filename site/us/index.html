@@ -25,6 +25,7 @@
     .wordmark strong{font-size:12px;color:var(--accent);letter-spacing:.4em;margin-top:6px}
     .nav{display:flex;gap:22px;align-items:center;flex-wrap:wrap;font-size:13px;font-weight:700;color:#cdd9ed}
     .nav a{display:inline-flex;align-items:center;min-height:44px;padding:8px 0}
+    .region-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mint);font-weight:800}
     .eyebrow{display:inline-flex;align-items:center;gap:10px;letter-spacing:.12em;text-transform:uppercase;font:600 11px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mint)}
     .eyebrow::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--mint);box-shadow:0 0 15px rgba(49,230,165,.6)}
     .hero{padding:105px 0 90px;max-width:900px}
@@ -75,13 +76,13 @@
 <body>
   <a class="skip-link" href="#main-content">Skip to main content</a>
   <header class="wrap">
-    <a href="/us/" class="wordmark" aria-label="Alternative Ventures USA">
+    <a href="#main-content" class="wordmark" aria-label="Alternative Ventures USA, skip to content">
       <span>Alternative</span><strong>Ventures</strong>
     </a>
     <nav class="nav" aria-label="Main navigation">
       <a href="#products">Products</a>
       <a href="#approach">Our approach</a>
-      <a href="/" hreflang="pt-BR">Brazilian site</a>
+      <span class="region-label" aria-label="United States preview only">US preview only</span>
     </nav>
   </header>
 
@@ -152,7 +153,7 @@
   <footer class="wrap">
     <span>Alternative Ventures USA · Product preview</span>
     <span>US operations and regulated services are not yet presented as active.</span>
-    <a href="/" hreflang="pt-BR">View the Brazilian portfolio</a>
+    <span>Regional environments remain separate.</span>
   </footer>
 </body>
 </html>
