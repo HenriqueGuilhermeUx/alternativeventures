@@ -26,7 +26,8 @@ export function assess(target, pr, statuses) {
   try {
     const url = new URL(status?.target_url);
     urlOk = url.protocol === 'https:' && url.hostname === host &&
-      (url.pathname === '/' || url.pathname === '');
+      (url.pathname === '/' || url.pathname === '') &&
+      !url.username && !url.password && !url.port && !url.search && !url.hash;
   } catch { /* missing or malformed status URL */ }
   const success = Boolean(validPr && matching.length === 1 && status?.state === 'success' && urlOk);
   return {
@@ -55,6 +56,10 @@ if (process.argv.includes('--self-test')) {
     [pr, [good[0], good[0]]],
     [pr, [{ ...good[0], state: 'pending' }]],
     [pr, [{ ...good[0], target_url: 'https://wrong.example' }]],
+    [pr, [{ ...good[0], target_url: 'https://user@' + target[5] }]],
+    [pr, [{ ...good[0], target_url: 'https://' + target[5] + ':8443' }]],
+    [pr, [{ ...good[0], target_url: 'https://' + target[5] + '/?untrusted=1' }]],
+    [pr, [{ ...good[0], target_url: 'https://' + target[5] + '/#spoofed' }]],
     [{ ...pr, head: { ...pr.head, sha: 'invalid' } }, good],
   ]) assert.equal(assess(target, p, statuses).classification, 'unverified');
   console.log('PASS: exact-HEAD status audit rejects missing, pending, duplicated, wrong-host, non-draft and invalid-SHA evidence');
