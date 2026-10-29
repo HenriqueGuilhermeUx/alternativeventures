@@ -44,3 +44,18 @@ The dedicated MODO project `241772f0-7d68-4ff3-a20d-aeac9bcbb3f8` reports real N
 - The three dedicated `netlify.toml` files were fetched from their isolated GitHub branches. All require Package directory selection and execute `scripts/usa-netlify-site-guard.mjs` before package installation; DocWallet uses Node 22 / npm, F-Insight Node 22 / pnpm 9.15.5, NexOffices Node 24 / npm. The Netlify connector cannot configure or inspect the actual Git/build selection. Therefore, **no new deploy was initiated**.
 - GitHub Actions on the exact PR heads: MODO 7/7 success, DocWallet 5/5, F-Insight 4/4, NexOffices 16/20 (the four shared failures above). CI artifacts are **not** evidence of a Netlify publication. All PRs remain draft; the institutional PR CI should be checked again on the new documentation commit.
 - Release gate remains `release_approved=false` for all four projects until a real deploy ID, verified immutable URL, correct build configuration, authenticated HTTP checks and visual inspection are available. No Brazilian services, databases, clients, payments or deployments may be modified.
+
+## 2026-10-29 10:41 BRT — NexOffices shared CI failure signatures (read-only)
+
+Read the **failed job steps and decoded job logs** on exact draft PR #91 HEAD `b7c54f3411acbc2b6a7233ad53a76ae882573d43`. These are four independently observed failures, not permission to edit shared modules or weaken their assertions:
+
+| Failed workflow (GitHub run) | Failing job step | Observed failure signature |
+| --- | --- | --- |
+| [NextGen Financial Engine V1](https://github.com/HenriqueGuilhermeUx/nexoffice/actions/runs/40736901365) | `Financial engine contract smoke` | `missing practical UX: Pix conectado ao seu financeiro` |
+| [DocWallet Workspace Experience V1](https://github.com/HenriqueGuilhermeUx/nexoffice/actions/runs/40736901492) | `Validate DocWallet workspace experience contract` | `DocWallet Workspace Experience V1 failed: DocFlow visible` |
+| [Receiving Account Onboarding V1](https://github.com/HenriqueGuilhermeUx/nexoffice/actions/runs/40736901307) | `Validate receiving account onboarding contract` | `missing onboarding copy: Recebimento Pix` |
+| [Product Discovery Onboarding V1](https://github.com/HenriqueGuilhermeUx/nexoffice/actions/runs/40736901381) | `Validate discovery contract` | `missing capability tile: Pergunte à empresa` |
+
+**Interpretation limit:** the logs show missing expected Brazilian copy/visibility in the tested contract, but do not establish whether the regression predates the USA branch. No baseline-main assertion-level comparison was performed; keep all four checks failed and unresolved. No shared test, component, or BR workflow was modified.
+
+At this read-back, all five PRs remain open/draft/unmerged. Their exact HEAD workflow results remain MODO 7/7, DocWallet 5/5, F-Insight 4/4, NexOffices 16/20, institutional 2/2 **before this documentation commit**. The four Netlify project records still require team SSO for all deploys; all four project env-var listings and the shared team env-var listing were empty. Only MODO has a published deploy ID (`6ae28e8751c9d9dc22c3573e`, `ready`); the other three return empty current-deploy objects. No Git/build connection or new deploy was attempted. HTTP-authenticated inspection, served-byte provenance and visual sign-off remain missing; release approval stays false.
