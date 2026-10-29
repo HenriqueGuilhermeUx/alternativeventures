@@ -19,10 +19,18 @@ const blocked = Object.freeze([
 ]);
 
 function directives(value) {
-  return new Map(String(value || '').split(';').map(x => x.trim()).filter(Boolean).map(x => {
-    const [name, ...args] = x.split(/\s+/);
-    return [name.toLowerCase(), args.join(' ').toLowerCase()];
-  }));
+  // Browsers do not use the last occurrence of a duplicated CSP directive.
+  // A Map built from all entries would silently overwrite an earlier unsafe
+  // policy with a later safe-looking value. Reject ambiguity instead.
+  const rules = new Map();
+  const duplicates = new Set();
+  for (const part of String(value || '').split(';').map(x => x.trim()).filter(Boolean)) {
+    const [name, ...args] = part.split(/\s+/);
+    const key = name.toLowerCase();
+    if (rules.has(key)) duplicates.add(key);
+    else rules.set(key, args.join(' ').toLowerCase());
+  }
+  return { rules, duplicates };
 }
 
 export function assessResponse({ path, allowed, status, headers, body, redirected = false }) {
@@ -33,7 +41,9 @@ export function assessResponse({ path, allowed, status, headers, body, redirecte
     const robots = String(headers?.['x-robots-tag'] || '').toLowerCase();
     if (!robots.includes('noindex') || !robots.includes('nofollow')) errors.push('missing-robots-header');
     if (String(headers?.['x-content-type-options'] || '').toLowerCase() !== 'nosniff') errors.push('missing-nosniff');
-    const csp = directives(headers?.['content-security-policy']);
+    const parsedCsp = directives(headers?.['content-security-policy']);
+    const csp = parsedCsp.rules;
+    if (parsedCsp.duplicates.size) errors.push('duplicate-csp-directive');
     for (const key of ['connect-src', 'form-action', 'object-src', 'base-uri', 'frame-ancestors']) {
       if (csp.get(key) !== "'none'") errors.push('unsafe-csp-' + key);
     }
@@ -116,6 +126,23 @@ if (process.argv.includes('--self-test')) {
     'content-security-policy': "default-src 'self'; script-src 'self'; img-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'" };
   const good = { path: '/us', allowed: true, status: 200, headers, body: html };
   assert.equal(assessResponse(good).passed, true);
+  // A permissive first occurrence must not be hidden by a strict duplicate.
+  for (const directive of ['connect-src', 'script-src', 'frame-ancestors']) {
+    const original = headers['content-security-policy'];
+    const unsafeFirst = original.replace(
+      new RegExp(directive + " [^;]+"),
+      directive + " *; " + original.match(new RegExp(directive + " [^;]+"))[0]
+    );
+    const duplicated = assessResponse({ ...good, headers: {
+      ...headers, 'content-security-policy': unsafeFirst,
+    } });
+    assert.equal(duplicated.passed, false, 'Duplicate CSP must fail: ' + directive);
+    assert.ok(duplicated.errors.includes('duplicate-csp-directive'));
+  }
+  assert.equal(assessResponse({ ...good, headers: {
+    ...headers, 'content-security-policy': headers['content-security-policy'] +
+      "; connect-src 'none'",
+  } }).passed, false, 'Even identical duplicate CSP directives fail closed');
   for (const bad of [
     { ...good, status: 404 }, { ...good, status: 302, redirected: true },
     { ...good, headers: { ...headers,
