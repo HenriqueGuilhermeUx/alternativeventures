@@ -109,6 +109,13 @@ export function assess(input) {
       if (!protectedForAllDeploys) status = 'unprotected-project';
       else if (!deploy || !Object.keys(deploy).length) status = 'no-deploy';
       else if (deploy?.state !== 'ready' && deploy?.state !== 'current') status = 'deploy-not-ready';
+      // MODO is published from a separate, reviewed deployment branch, not
+      // directly from PR #163. Never equate those two SHAs or waive ancestry.
+      // Its independent branch gate must validate the GitHub comparison,
+      // resolved branch SHA, Netlify detail, security rules and static-only build.
+      else if (name === 'av-usa-modo' && detailIdentityOk &&
+               detail?.branch === 'deploy/modo-usa-netlify-20261028')
+        status = 'requires-independent-modo-branch-provenance-gate';
       else if (!shaPattern.test(actualSha || '') ||
                actualSha.toLowerCase() !== expectedSha.toLowerCase()) status = 'deploy-sha-unverified';
       else if (detail && !detailIdentityOk) status = 'deploy-detail-mismatch';
@@ -233,6 +240,24 @@ if (process.argv.includes('--self-test')) {
     .projects[0].status, 'deploy-detail-mismatch');
   assert.equal(assess(withDetails({ ...detail, branch: 'main' }))
     .projects[0].status, 'deploy-branch-mismatch');
+  // The real MODO dedicated site uses an isolated deploy branch five commits
+  // ahead of PR #163. The generic gate must request the independent ancestry
+  // proof, not mislabel a deliberately distinct SHA as an approved PR deploy.
+  const modoDeployBranch = { ...detail,
+    branch: 'deploy/modo-usa-netlify-20261028',
+    commit_ref: 'b'.repeat(40),
+    summary: { messages: [
+      { title: '4 redirect rules processed' },
+      { title: '1 header rule processed' },
+      { title: 'No functions deployed' },
+      { title: 'No edge functions deployed' },
+    ] },
+  };
+  assert.equal(assess(withDetails(modoDeployBranch)).projects[0].status,
+    'requires-independent-modo-branch-provenance-gate');
+  assert.equal(assess(withDetails(modoDeployBranch)).release_approved, false);
+  assert.equal(assess(withDetails({ ...modoDeployBranch, branch: 'main' }))
+    .projects[0].status, 'deploy-sha-unverified');
   for (const context of ['deploy-preview', 'branch-deploy', undefined]) {
     assert.equal(assess(withDetails({ ...detail, context })).projects[0].status,
       'deploy-context-mismatch');
