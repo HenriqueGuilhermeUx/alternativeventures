@@ -56,7 +56,10 @@ function unsafeAnchorLinks(body, currentPath) {
     }
     try {
       const url = new URL(href, 'https://usa-preview.invalid' + currentPath);
+      // Percent-encoded paths can be decoded by intermediaries before routing.
+      // USA demos use plain static routes, so ambiguous encodings fail closed.
       if (url.origin !== 'https://usa-preview.invalid' ||
+          url.pathname.includes('%') ||
           /^\/(?:app|login|auth|admin|api|checkout|billing|pix|wallet|pj|office|br)(?:\/|$)/i.test(url.pathname)) {
         issues.push('unsafe-navigation-anchor');
       }
@@ -164,7 +167,8 @@ if (process.argv.includes('--self-test')) {
   for (const href of [
     'https://trynexa.com.br', '//trynexa.com.br', 'javascript:alert(1)',
     'https://usa-preview.invalid/us', 'mailto:real@example.com',
-    '/login', '/api/v1/health', '../app', '/br', 'https://example.com',
+    '/login', '/api/v1/health', '../app', '/br', '/%61pp',
+    '/us/%2e%2e/login', 'https://example.com',
     '&#104;ttps://example.com',
   ]) {
     const body = html.replace('</body>', '<a href="' + href + '">Go</a></body>');
