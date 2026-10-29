@@ -19,6 +19,18 @@ function canonicalHostMatches(project, name) {
       !url.username && !url.password && !url.port && !url.search && !url.hash;
   } catch { return false; }
 }
+// Verify exact HTTPS Netlify hosts. A plausible hostname embedded in a URL,
+// userinfo, port, query or fragment must never count as deploy provenance.
+function exactDeployUrl(value, hostname) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && url.hostname === hostname &&
+      !url.username && !url.password && !url.port &&
+      (url.pathname === '/' || url.pathname === '') &&
+      !url.search && !url.hash;
+  } catch { return false; }
+}
+
 export const sites = Object.freeze({
   'av-usa-modo': '241772f0-7d68-4ff3-a20d-aeac9bcbb3f8',
   'av-usa-docwallet': 'a5b1cda8-535a-4db2-b01f-07f41c30be76',
@@ -40,6 +52,10 @@ export function assess(input) {
     const detail = deployDetails[id] || null;
     const detailIdentityOk = Boolean(detail && detail.id === deploy?.id &&
       detail.site_id === id && detail.state === 'ready');
+    const detailUrlsOk = detailIdentityOk &&
+      exactDeployUrl(detail?.ssl_url, `${name}.netlify.app`) &&
+      exactDeployUrl(detail?.links?.alias, `${name}.netlify.app`) &&
+      exactDeployUrl(detail?.links?.permalink, `${detail?.id}--${name}.netlify.app`);
     const actualSha = deploy?.commit_ref || deploy?.commit_sha ||
       (detailIdentityOk ? detail.commit_ref : null);
     const expectedBranches = {
@@ -109,6 +125,9 @@ export function assess(input) {
       if (!protectedForAllDeploys) status = 'unprotected-project';
       else if (!deploy || !Object.keys(deploy).length) status = 'no-deploy';
       else if (deploy?.state !== 'ready' && deploy?.state !== 'current') status = 'deploy-not-ready';
+      // Reject spoofed or missing immutable Netlify deploy URLs before accepting
+      // any branch exception, including MODO's separately attested deploy branch.
+      else if (detail && !detailUrlsOk) status = 'deploy-url-mismatch';
       // MODO is published from a separate, reviewed deployment branch, not
       // directly from PR #163. Never equate those two SHAs or waive ancestry.
       // Its independent branch gate must validate the GitHub comparison,
@@ -141,6 +160,7 @@ export function assess(input) {
       team_login_protected_all_deploys: protectedForAllDeploys,
       deploy_id: typeof deploy?.id === 'string' ? deploy.id : null,
       deploy_detail_identity_verified: detailIdentityOk,
+      deploy_urls_verified: Boolean(detailUrlsOk),
       deploy_detail_branch_verified: Boolean(detailBranchOk),
       deploy_detail_context_verified: Boolean(detailContextOk),
       deploy_detail_sha_verified: Boolean(detailShaOk),
@@ -187,6 +207,9 @@ if (process.argv.includes('--self-test')) {
     'requires-deploy-detail-and-independent-http-review');
   const detail = { id: 'test-deploy', site_id: sites['av-usa-modo'],
     state: 'ready', commit_ref: sha,
+    ssl_url: 'https://av-usa-modo.netlify.app',
+    links: { alias: 'https://av-usa-modo.netlify.app',
+      permalink: 'https://test-deploy--av-usa-modo.netlify.app' },
     branch: 'feature/usa-modo-smartbots-localization-20261024',
     context: 'production',
     available_functions: [], required_functions: [], required_edge_functions: [],
@@ -204,6 +227,23 @@ if (process.argv.includes('--self-test')) {
     deployDetails: { [sites['av-usa-modo']]: d } });
   assert.equal(assess(withDetails(detail)).projects[0].status,
     'requires-independent-http-and-visual-review');
+  assert.equal(assess(withDetails(detail)).projects[0].deploy_urls_verified, true);
+  for (const mutated of [
+    { ssl_url: 'http://av-usa-modo.netlify.app' },
+    { ssl_url: 'https://av-usa-modo.netlify.app.evil.test' },
+    { ssl_url: 'https://av-usa-modo.netlify.app@evil.test' },
+    { ssl_url: 'https://av-usa-modo.netlify.app:8443' },
+    { ssl_url: 'https://av-usa-modo.netlify.app/?untrusted=1' },
+    { links: { ...detail.links, alias: 'https://wrong.netlify.app' } },
+    { links: { ...detail.links,
+      permalink: 'https://wrong-deploy--av-usa-modo.netlify.app' } },
+    { links: undefined },
+  ]) {
+    const outcome = assess(withDetails({ ...detail, ...mutated })).projects[0];
+    assert.equal(outcome.status, 'deploy-url-mismatch');
+    assert.equal(outcome.deploy_urls_verified, false);
+    assert.equal(outcome.release_approved, false);
+  }
   for (const field of ['available_functions', 'required_functions',
     'required_edge_functions', 'required_server']) {
     assert.equal(assess(withDetails({ ...detail, [field]: ['unexpected'] }))
