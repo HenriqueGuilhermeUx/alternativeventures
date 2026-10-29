@@ -17,6 +17,15 @@ const FILES = [
   'scripts/usa-netlify-isolation-check.mjs',
 ].sort();
 const SHA = /^[a-f0-9]{40}$/i;
+// Reviewed Git blob IDs at the immutable, independently resolved USA deploy SHA.
+// A filename allowlist alone cannot detect a malicious edit inside an allowed file.
+const REVIEWED_SOURCE_BLOBS = Object.freeze({
+  'apps/web/src/UsLanding.tsx': '395128d7085be7c4bb4156425d8de733b3dd23a6',
+  'apps/web/src/usa-main.tsx': 'd03672387721e0d3bc4896171e02bc6dbb25b89d',
+  'netlify.toml': 'ba456b7ddaa351d136c5dc644f65b2d9917016a6',
+  'scripts/build-usa-netlify.mjs': 'a89e50583de89ebbc551677bec39b97abc4c831a',
+  'scripts/usa-netlify-isolation-check.mjs': 'd86783403a44724c3617193ffb30e928c90a973a',
+});
 
 // Require exact Netlify-owned hostnames, not a plausible site name in a
 // redirect URL, userinfo, path, query string or attacker-controlled suffix.
@@ -36,7 +45,7 @@ function ruleCount(messages, kind) {
   return matches.length === 1 ? Number(matches[0][1]) : null;
 }
 
-export function assess({ prHead, comparison, resolvedBranchHeadSha, project, deploy } = {}) {
+export function assess({ prHead, comparison, resolvedBranchHeadSha, sourceFiles, project, deploy } = {}) {
   const problems = [];
   const check = (condition, message) => { if (!condition) problems.push(message); };
   check(SHA.test(prHead || '') && prHead === PR, 'PR HEAD not pinned to reviewed SHA');
@@ -55,6 +64,18 @@ export function assess({ prHead, comparison, resolvedBranchHeadSha, project, dep
     ? comparison.files.map(f => f.filename).sort() : [];
   check(JSON.stringify(comparedFiles) === JSON.stringify(FILES),
     'Unexpected deployment-branch changes require manual review');
+  // sourceFiles must be obtained independently from GitHub Contents at the
+  // exact resolved deploy commit. The ref is checked on every file to prevent
+  // mixing results from a later branch HEAD or a Brazilian/default branch.
+  const sourceRows = Array.isArray(sourceFiles) ? sourceFiles : [];
+  const sourcePaths = sourceRows.map(row => row?.path).sort();
+  check(sourceRows.length === FILES.length &&
+    JSON.stringify(sourcePaths) === JSON.stringify(FILES) &&
+    sourceRows.every(row =>
+      row?.ref === resolvedBranchHeadSha &&
+      SHA.test(row?.sha || '') &&
+      row.sha === REVIEWED_SOURCE_BLOBS[row.path]),
+    'Exact reviewed deploy-branch source blobs or immutable refs unverified');
   // The GitHub compare response can be incomplete or contain a rename/delete
   // while retaining an allowlisted filename. Require a complete, internally
   // consistent diff of modifications only before trusting branch provenance.
@@ -153,10 +174,20 @@ if (process.argv.includes('--self-test')) {
       { title: 'No functions deployed' }, { title: 'No edge functions deployed' },
     ] },
   };
-  const base = { prHead: PR, comparison, resolvedBranchHeadSha: head, project, deploy };
+  const sourceFiles = FILES.map(path => ({
+    path, ref: head, sha: REVIEWED_SOURCE_BLOBS[path],
+  }));
+  const base = { prHead: PR, comparison, resolvedBranchHeadSha: head, sourceFiles, project, deploy };
   assert.equal(assess(base).status, 'metadata-verified-requires-http-and-visual-review');
   assert.equal(assess(base).release_approved, false);
   const negatives = [
+    { sourceFiles: undefined },
+    { sourceFiles: sourceFiles.slice(1) },
+    { sourceFiles: [...sourceFiles, sourceFiles[0]] },
+    { sourceFiles: sourceFiles.map((row, i) => i === 0 ?
+      { ...row, sha: 'c'.repeat(40) } : row) },
+    { sourceFiles: sourceFiles.map((row, i) => i === 0 ?
+      { ...row, ref: PR } : row) },
     { prHead: 'a'.repeat(40) },
     { comparison: { ...comparison, behind_by: 1 } },
     { comparison: { ...comparison, head: 'main' } },
@@ -209,7 +240,7 @@ if (process.argv.includes('--self-test')) {
     assert.equal(result.status, 'blocked');
     assert.equal(result.release_approved, false);
   }
-  console.log('PASS: USA MODO deploy-branch ancestry, independently resolved branch SHA, allowlist, SSO, secrets and static-only gate');
+  console.log('PASS: USA MODO deploy-branch ancestry, immutable source blob pins, SSO, secrets and static-only gate');
 } else {
   const idx = process.argv.indexOf('--input');
   if (idx < 0 || !process.argv[idx + 1]) {
