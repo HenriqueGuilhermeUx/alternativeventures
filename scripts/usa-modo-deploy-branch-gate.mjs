@@ -63,9 +63,20 @@ export function assess({ prHead, comparison, project, deploy } = {}) {
   check(ruleCount(deploy?.summary?.messages, 'redirect') === 4 &&
     ruleCount(deploy?.summary?.messages, 'header') === 1,
     'Four allowlist redirects and one header rule not attested');
+  // Fail closed on every executable deployment surface, not just the list of
+  // available Functions. A successful static build must not ship SSR/server,
+  // Functions or Edge Functions on this team-only review host.
+  const titles = Array.isArray(deploy?.summary?.messages)
+    ? deploy.summary.messages.map(m => String(m?.title || '')) : [];
   check(Array.isArray(deploy?.available_functions) && deploy.available_functions.length === 0 &&
-    Array.isArray(deploy?.required_edge_functions) && deploy.required_edge_functions.length === 0,
-    'Functions or edge execution not independently excluded');
+    Array.isArray(deploy?.required_functions) && deploy.required_functions.length === 0 &&
+    Array.isArray(deploy?.required_server) && deploy.required_server.length === 0 &&
+    Array.isArray(deploy?.required_edge_functions) && deploy.required_edge_functions.length === 0 &&
+    deploy?.server === null &&
+    (deploy?.edge_functions_present === null || deploy?.edge_functions_present === false) &&
+    titles.filter(t => t === 'No functions deployed').length === 1 &&
+    titles.filter(t => t === 'No edge functions deployed').length === 1,
+    'Static-only deployment not independently attested: server, functions or edge execution');
   return {
     schema_version: 1, project: 'av-usa-modo',
     pr_head_sha: prHead || null, deployed_sha: deploy?.commit_ref || null,
@@ -92,11 +103,13 @@ if (process.argv.includes('--self-test')) {
   const deploy = {
     id: 'sample-deploy', site_id: SITE, state: 'ready',
     context: 'production', branch: BRANCH, commit_ref: head,
-    available_functions: [], required_edge_functions: [],
+    available_functions: [], required_functions: [], required_server: [],
+    required_edge_functions: [], server: null, edge_functions_present: null,
     deploy_validations_report: { secret_scan_result: {
       scannedFilesCount: 451, secretsScanMatches: [], enhancedSecretsScanMatches: [] } },
     summary: { messages: [
       { title: '4 redirect rules processed' }, { title: '1 header rule processed' },
+      { title: 'No functions deployed' }, { title: 'No edge functions deployed' },
     ] },
   };
   const base = { prHead: PR, comparison, project, deploy };
@@ -116,6 +129,15 @@ if (process.argv.includes('--self-test')) {
     { deploy: { ...deploy, deploy_validations_report: { secret_scan_result: {
       scannedFilesCount: 0, secretsScanMatches: [], enhancedSecretsScanMatches: [] } } } },
     { deploy: { ...deploy, available_functions: ['unexpected'] } },
+    { deploy: { ...deploy, required_functions: ['unexpected'] } },
+    { deploy: { ...deploy, required_server: ['unexpected'] } },
+    { deploy: { ...deploy, required_edge_functions: ['unexpected'] } },
+    { deploy: { ...deploy, server: { type: 'server' } } },
+    { deploy: { ...deploy, edge_functions_present: true } },
+    { deploy: { ...deploy, summary: { messages: deploy.summary.messages.filter(m =>
+      m.title !== 'No functions deployed') } } },
+    { deploy: { ...deploy, summary: { messages: deploy.summary.messages.filter(m =>
+      m.title !== 'No edge functions deployed') } } },
   ];
   for (const mutation of negatives) {
     const result = assess({ ...base, ...mutation });
