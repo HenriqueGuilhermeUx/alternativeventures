@@ -84,6 +84,16 @@ export function assess(input) {
     };
     const headerRuleCount = processedRuleCount('header');
     const redirectRuleCount = processedRuleCount('redirect');
+    // USA review bundles must be static. A ready deployment with server-side
+    // execution could call shared BR services even when browser routes look safe.
+    // Missing fields or summary attestations fail closed.
+    const staticOnlyOk = detailIdentityOk &&
+      ['available_functions', 'required_functions', 'required_edge_functions',
+        'required_server'].every(key => Array.isArray(detail[key]) && detail[key].length === 0) &&
+      detail.server === null &&
+      (detail.edge_functions_present === null || detail.edge_functions_present === false) &&
+      messages.filter(m => m?.title === 'No functions deployed').length === 1 &&
+      messages.filter(m => m?.title === 'No edge functions deployed').length === 1;
     const identityOk = matches.length === 1 && project?.name === name;
     const teamOk = project?._enrichedFields?.teamId === expectedTeamId;
     const urlOk = canonicalHostMatches(project, name);
@@ -107,6 +117,7 @@ export function assess(input) {
       else if (detail && !detailShaOk) status = 'deploy-detail-sha-mismatch';
       else if (secretScanFindings) status = 'deploy-secret-scan-findings';
       else if (detail && !secretScanOk) status = 'deploy-secret-scan-unverified';
+      else if (detail && !staticOnlyOk) status = 'deploy-executable-surface-unverified';
       else if (noHeaderRules || headerRuleCount === 0) status = 'deploy-missing-security-headers';
       else if (noRedirectRules || redirectRuleCount === 0) status = 'deploy-missing-route-guard';
       else if (!detail) status = 'requires-deploy-detail-and-independent-http-review';
@@ -128,6 +139,7 @@ export function assess(input) {
       deploy_detail_sha_verified: Boolean(detailShaOk),
       deploy_secret_scan_verified: Boolean(secretScanOk),
       deploy_secret_scan_findings: Boolean(secretScanFindings),
+      deploy_static_only_verified: Boolean(staticOnlyOk),
       deploy_reports_no_header_rules: noHeaderRules,
       deploy_reports_no_redirect_rules: noRedirectRules,
       processed_header_rule_count: headerRuleCount,
@@ -170,17 +182,37 @@ if (process.argv.includes('--self-test')) {
     state: 'ready', commit_ref: sha,
     branch: 'feature/usa-modo-smartbots-localization-20261024',
     context: 'production',
+    available_functions: [], required_functions: [], required_edge_functions: [],
+    required_server: [], server: null, edge_functions_present: null,
     deploy_validations_report: { secret_scan_result: {
       scannedFilesCount: 12, secretsScanMatches: [], enhancedSecretsScanMatches: [],
     } },
     summary: { messages: [
       { title: '6 redirect rules processed' },
       { title: '1 header rule processed' },
+      { title: 'No functions deployed' },
+      { title: 'No edge functions deployed' },
     ] } };
   const withDetails = d => ({ projects: altered, expectedHeads,
     deployDetails: { [sites['av-usa-modo']]: d } });
   assert.equal(assess(withDetails(detail)).projects[0].status,
     'requires-independent-http-and-visual-review');
+  for (const field of ['available_functions', 'required_functions',
+    'required_edge_functions', 'required_server']) {
+    assert.equal(assess(withDetails({ ...detail, [field]: ['unexpected'] }))
+      .projects[0].status, 'deploy-executable-surface-unverified');
+    assert.equal(assess(withDetails({ ...detail, [field]: undefined }))
+      .projects[0].status, 'deploy-executable-surface-unverified');
+  }
+  assert.equal(assess(withDetails({ ...detail, server: { type: 'server' } }))
+    .projects[0].status, 'deploy-executable-surface-unverified');
+  assert.equal(assess(withDetails({ ...detail, edge_functions_present: true }))
+    .projects[0].status, 'deploy-executable-surface-unverified');
+  for (const title of ['No functions deployed', 'No edge functions deployed']) {
+    assert.equal(assess(withDetails({ ...detail, summary: { messages:
+      detail.summary.messages.filter(m => m.title !== title) } }))
+      .projects[0].status, 'deploy-executable-surface-unverified');
+  }
   assert.equal(assess(withDetails({ ...detail, summary: { messages: [] } }))
     .projects[0].status, 'deploy-security-rules-unverified');
   assert.equal(assess(withDetails({ ...detail, summary: { messages: [
