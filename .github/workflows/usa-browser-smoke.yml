@@ -11,6 +11,7 @@ on:
       - 'scripts/usa-render-provenance-audit.mjs'
       - 'scripts/usa-netlify-status-audit.mjs'
       - 'scripts/usa-dedicated-netlify-gate.mjs'
+      - 'scripts/usa-netlify-config-source-gate.mjs'
       - 'scripts/usa-modo-deploy-branch-gate.mjs'
       - 'scripts/usa-smartbots-deploy-provenance-gate.mjs'
       - 'scripts/usa-dedicated-http-gate.mjs'
@@ -67,6 +68,12 @@ jobs:
           node scripts/usa-netlify-status-audit.mjs
       - name: Verify dedicated USA Netlify site release gate (offline fixtures)
         run: node scripts/usa-dedicated-netlify-gate.mjs --self-test
+      - name: Attest exact-HEAD dedicated USA Netlify source config (read-only)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/usa-netlify-config-source-gate.mjs --self-test
+          node scripts/usa-netlify-config-source-gate.mjs
       - name: Verify isolated MODO USA deployment-branch provenance (offline fixtures)
         run: node scripts/usa-modo-deploy-branch-gate.mjs --self-test
       - name: Verify SmartBots USA deployment branch divergence and static-only metadata (offline fixtures)
