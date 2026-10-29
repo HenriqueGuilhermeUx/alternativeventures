@@ -74,8 +74,12 @@ jobs:
         run: |
           node scripts/usa-netlify-config-source-gate.mjs --self-test
           node scripts/usa-netlify-config-source-gate.mjs
-      - name: Verify isolated MODO USA deployment-branch provenance (offline fixtures)
-        run: node scripts/usa-modo-deploy-branch-gate.mjs --self-test
+      - name: Verify isolated MODO USA deployment-branch provenance and immutable GitHub source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/usa-modo-deploy-branch-gate.mjs --self-test
+          node scripts/usa-modo-deploy-branch-gate.mjs --source-check
       - name: Verify SmartBots USA deployment branch divergence and static-only metadata (offline fixtures)
         run: node scripts/usa-smartbots-deploy-provenance-gate.mjs --self-test
       - name: Verify dedicated USA Netlify HTTP security probe (offline fixtures)
