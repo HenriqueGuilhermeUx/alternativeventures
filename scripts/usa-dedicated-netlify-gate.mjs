@@ -127,6 +127,7 @@ export function assess(input) {
       else if (deploy?.state !== 'ready' && deploy?.state !== 'current') status = 'deploy-not-ready';
       // Reject spoofed or missing immutable Netlify deploy URLs before accepting
       // any branch exception, including MODO's separately attested deploy branch.
+      else if (detail && !detailIdentityOk) status = 'deploy-detail-mismatch';
       else if (detail && !detailUrlsOk) status = 'deploy-url-mismatch';
       // MODO is published from a separate, reviewed deployment branch, not
       // directly from PR #163. Never equate those two SHAs or waive ancestry.
@@ -137,7 +138,6 @@ export function assess(input) {
         status = 'requires-independent-modo-branch-provenance-gate';
       else if (!shaPattern.test(actualSha || '') ||
                actualSha.toLowerCase() !== expectedSha.toLowerCase()) status = 'deploy-sha-unverified';
-      else if (detail && !detailIdentityOk) status = 'deploy-detail-mismatch';
       else if (detail && !detailBranchOk) status = 'deploy-branch-mismatch';
       else if (detail && !detailContextOk) status = 'deploy-context-mismatch';
       else if (detail && !detailShaOk) status = 'deploy-detail-sha-mismatch';
