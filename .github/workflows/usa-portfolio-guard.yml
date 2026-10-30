@@ -1,0 +1,35 @@
+name: Alternative Ventures USA preview guard
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'site/us/**'
+      - 'deploy/netlify/institutional/**'
+      - 'docs/usa-netlify-first-deploy-handoff-20261029.md'
+      - 'scripts/verify-usa-portfolio.mjs'
+      - 'scripts/usa-*.mjs'
+      - 'netlify.toml'
+      - '.github/workflows/usa-browser-smoke.yml'
+      - '.github/workflows/usa-portfolio-guard.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Pin review tests to the actual PR HEAD, never GitHub's synthetic merge ref.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Attest exact PR HEAD checkout
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify dedicated institutional USA Netlify static package
+        run: |
+          node scripts/usa-institutional-netlify-build.mjs --self-test
+          SITE_ID=c54ab12d-5d1e-42d8-89ea-bf2348c87b59 SITE_NAME=av-usa-institutional CONTEXT=production BRANCH=feature/usa-portfolio-preview-20261024 COMMIT_REF="$(git rev-parse HEAD)" node scripts/usa-institutional-netlify-build.mjs
+          test "$(find dist-usa-institutional -maxdepth 1 -type f | wc -l)" -eq 5
+      - run: node scripts/verify-usa-portfolio.mjs

@@ -1,0 +1,132 @@
+name: Alternative Ventures USA browser QA
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'site/us/**'
+      - 'deploy/netlify/institutional/**'
+      - 'docs/usa-netlify-first-deploy-handoff-20261029.md'
+      - 'scripts/usa-browser-smoke.mjs'
+      - 'scripts/usa-live-demos-browser.mjs'
+      - 'scripts/usa-nexoffices-render-browser.mjs'
+      - 'scripts/usa-render-provenance-audit.mjs'
+      - 'scripts/usa-netlify-status-audit.mjs'
+      - 'scripts/usa-dedicated-netlify-gate.mjs'
+      - 'scripts/usa-netlify-config-source-gate.mjs'
+      - 'scripts/usa-modo-deploy-branch-gate.mjs'
+      - 'scripts/usa-smartbots-deploy-provenance-gate.mjs'
+      - 'scripts/usa-dedicated-http-gate.mjs'
+      - 'scripts/usa-release-readiness.mjs'
+      - 'scripts/usa-nexoffices-ci-debt-audit.mjs'
+      - 'scripts/usa-evidence-manifest.mjs'
+      - 'scripts/usa-review-index.mjs'
+      - 'scripts/usa-review-browser.mjs'
+      - 'scripts/usa-package-integrity.mjs'
+      - 'scripts/usa-*.mjs'
+      - 'scripts/verify-usa-portfolio.mjs'
+      - 'netlify.toml'
+      - '.github/workflows/usa-portfolio-guard.yml'
+      - '.github/workflows/usa-browser-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Pin review tests to the actual PR HEAD, never GitHub's synthetic merge ref.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Attest exact PR HEAD checkout
+        run: test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install test-only Playwright dependency
+        run: npm install --no-save --no-package-lock --ignore-scripts playwright@1.57.0
+      # GitHub ubuntu-latest already includes Chromium runtime libraries. Avoid
+      # apt mirrors here: slow downloads exhausted the 12-minute job limit on
+      # run 40308868336 before any browser assertions could execute.
+      # If a runner lacks a required library, the browser test must fail closed.
+      - name: Install Chromium browser only (no apt mirror downloads)
+        run: npx playwright install chromium
+      - name: Test USA page in mobile and desktop Chromium
+        run: node scripts/usa-browser-smoke.mjs
+      - name: Verify four deployed Netlify USA demos
+        run: node scripts/usa-live-demos-browser.mjs
+      - name: Verify separate NexOffices USA Render staging
+        run: node scripts/usa-nexoffices-render-browser.mjs
+      - name: Record read-only NexOffices Render provenance against live PR HEAD
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/usa-render-provenance-audit.mjs --self-test
+          node scripts/usa-render-provenance-audit.mjs
+      - name: Record exact-HEAD GitHub Netlify preview status evidence (read-only)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/usa-netlify-status-audit.mjs --self-test
+          node scripts/usa-netlify-status-audit.mjs
+      - name: Verify dedicated USA Netlify site release gate (offline fixtures)
+        run: node scripts/usa-dedicated-netlify-gate.mjs --self-test
+      - name: Attest exact-HEAD dedicated USA Netlify source config (read-only)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/usa-netlify-config-source-gate.mjs --self-test
+          node scripts/usa-netlify-config-source-gate.mjs
+      - name: Verify isolated MODO USA deployment-branch provenance and immutable GitHub source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/usa-modo-deploy-branch-gate.mjs --self-test
+          node scripts/usa-modo-deploy-branch-gate.mjs --source-check
+      - name: Verify SmartBots USA deployment branch divergence and static-only metadata (offline fixtures)
+        run: node scripts/usa-smartbots-deploy-provenance-gate.mjs --self-test
+      - name: Verify dedicated USA Netlify HTTP security probe (offline fixtures)
+        run: node scripts/usa-dedicated-http-gate.mjs --self-test
+      - name: Record four separate NexOffices shared-BR CI debts against exact PR HEAD (read-only)
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/usa-nexoffices-ci-debt-audit.mjs --self-test
+          node scripts/usa-nexoffices-ci-debt-audit.mjs
+      - name: Verify screenshots and generate SHA-256 review manifest
+        env:
+          USA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/usa-evidence-manifest.mjs
+      - name: Produce fail-closed release-readiness decision for human reviewers
+        run: |
+          node scripts/usa-release-readiness.mjs --self-test
+          node scripts/usa-release-readiness.mjs
+      - name: Build offline human-review gallery from integrity-verified screenshots
+        run: node scripts/usa-review-index.mjs
+      - name: Browser-check generated offline review gallery and all eighteen screenshots
+        run: node scripts/usa-review-browser.mjs
+      - name: Hash and verify complete offline review package (no network)
+        env:
+          USA_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node scripts/usa-package-integrity.mjs --self-test
+          node scripts/usa-package-integrity.mjs
+          node scripts/usa-package-integrity.mjs --verify
+      - name: Preserve fictional-data screenshots and integrity manifest for manual review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: usa-portfolio-visual-evidence
+          path: |
+            artifacts/usa-review/*.png
+            artifacts/usa-review/manifest.json
+            artifacts/usa-review/nexoffices-render-provenance.json
+            artifacts/usa-review/netlify-status-evidence.json
+            artifacts/usa-review/nexoffices-shared-ci-debts.json
+            artifacts/usa-review/release-readiness.json
+            artifacts/usa-review/review.html
+            artifacts/usa-review/integrity.json
+          if-no-files-found: error
+          retention-days: 7

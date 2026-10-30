@@ -1,0 +1,105 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const read = path => readFileSync(resolve(root, path), "utf8");
+const html = read("site/us/index.html");
+const brazil = read("site/index.html");
+const netlify = read("netlify.toml");
+assert.match(html, /<html lang="en-US">/, "US language missing");
+assert.match(html, /name="robots"\s+content="noindex,nofollow"/, "Preview must not be indexed");
+// Defense in depth: the informational /us/ page must be incapable of
+// executing JavaScript, calling APIs, submitting forms or embedding providers.
+// Font stylesheet origins are explicitly permitted; the Brazil site is untouched.
+const csp = html.match(/<meta\s+http-equiv="Content-Security-Policy"\s+content="([^"]+)"/i)?.[1];
+assert.ok(csp, "USA preview Content Security Policy is missing");
+const directives = new Map(csp.split(";").map(x => x.trim()).filter(Boolean).map(x => {
+  const [name, ...sources] = x.split(/\s+/);
+  return [name, sources];
+}));
+for (const name of ["script-src", "connect-src", "form-action", "object-src", "frame-src", "base-uri"]) {
+  assert.deepEqual(directives.get(name), ["'none'"], "USA preview must deny " + name);
+}
+assert.deepEqual(directives.get("default-src"), ["'self'"], "Unexpected default CSP origin");
+assert.deepEqual(directives.get("img-src"), ["'self'", "data:"], "Unexpected image CSP origin");
+assert.deepEqual(directives.get("font-src"), ["'self'"], "USA preview fonts must be same-origin only");
+assert.deepEqual(directives.get("style-src"), ["'self'", "'unsafe-inline'"], "USA preview styles must not allow remote hosts");
+
+assert.match(html, /<title>Alternative Ventures USA/i);
+assert.match(html, /<a class="skip-link" href="#main-content">Skip to main content<\/a>/, "Keyboard skip link missing");
+assert.match(html, /<main id="main-content" tabindex="-1">/, "Skip link target must be focusable");
+assert.match(html, /<a href="#main-content" class="wordmark"/,
+  "USA brand navigation must stay inside the isolated preview");
+assert.ok(!/<a\b[^>]*href=["']\/(?:["']|\?)/i.test(html),
+  "USA preview must not navigate to the Brazilian site root");
+assert.ok(!/hreflang=["']pt-BR["']/i.test(html),
+  "USA preview must not advertise Brazilian routes");
+assert.match(html, /\.skip-link:focus\{top:12px\}/, "Skip link must be visible on keyboard focus");
+const sectionIds = [...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]);
+assert.equal(new Set(sectionIds).size, sectionIds.length, "Duplicate section ids");
+for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
+  assert.ok(sectionIds.includes(target), "Broken in-page navigation target: " + target);
+}
+const pendingDemos = [...html.matchAll(/<p class="product-demo-pending">([^<]+)<\/p>/g)];
+assert.equal(pendingDemos.length, 5, "Five dedicated USA previews must remain visibly unavailable until verified");
+for (const [, notice] of pendingDemos) {
+  assert.match(notice, /pending independent deploy verification/i,
+    "Every USA product must disclose the pending deployment review");
+}
+assert.ok(!/<a\b[^>]*class="product-demo-(?:link|pending)"/i.test(html),
+  "Do not publish unverified product preview links");
+assert.match(html, /<p class="demo-data-note" id="usa-demo-data-note">Fictional sample data only\./,
+  "Visible fictional-data guidance is required");
+assert.match(html, /Do not enter personal, customer, financial, or confidential information/,
+  "Preview must warn reviewers against entering real information");
+for (const name of ["MODO", "SmartBots", "DocWallet", "F-Insight", "NexOffices"]) {
+  assert.ok(html.includes(name), "Missing selected US preview: " + name);
+}
+assert.match(html, /preview only/i, "US commercial status disclaimer missing");
+assert.match(html, /does not open accounts or accept orders/i);
+assert.ok(!/action=["']https?:/i.test(html), "No remote forms allowed on preview");
+
+// The US institutional page is a non-interactive showcase. Fail closed if a
+// later change adds account inputs, embedded apps, executable third-party
+// scripts, persistence or browser-initiated data transmission.
+const forbiddenPreviewFeatures = [
+  ["input or submission controls", /<(?:form|input|textarea|select|button)\b/i],
+  ["embedded third-party content", /<(?:iframe|object|embed)\b/i],
+  ["any executable or blocked script markup", /<script\b/i],
+  ["inline HTML event handlers", /\bon[a-z]+\s*=/i],
+  ["client-side network calls", /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\s*\(/i],
+  ["persistent browser storage", /\b(?:localStorage|sessionStorage|indexedDB|serviceWorker)\b/i],
+];
+for (const [feature, pattern] of forbiddenPreviewFeatures) {
+  assert.ok(!pattern.test(html), "USA institutional preview must not contain " + feature);
+}
+
+assert.ok(!/<link\b[^>]*\brel=["'](?:preconnect|dns-prefetch|stylesheet)["']/i.test(html),
+  "USA institutional preview must not preload or fetch remote stylesheets");
+assert.ok(!/@import\s+(?:url\s*\()?\s*["']?https?:/i.test(html),
+  "USA institutional preview must not import remote CSS");
+const absoluteLinks = [...html.matchAll(/href=["'](https?:\/\/[^"']+)["']/gi)];
+assert.equal(absoluteLinks.length, 0, "No external demo links before independent deploy and security review");
+assert.ok(!/deploy-preview-163--modo1|deploy-preview-12--docwallet|deploy-preview-26--f-insight|nexoffices-usa-staging/i.test(html),
+  "Institutional page must not advertise legacy staging hosts");
+assert.match(brazil, /<html lang="pt-BR">/, "Brazil locale must remain intact");
+assert.ok(netlify.includes('publish = "site"'), "Existing publishing root must remain unchanged");
+// Prevent CI from silently skipping a security change to the other workflow,
+ // a USA gate script, or the institutional Netlify configuration.
+const releaseWorkflows = [
+  read(".github/workflows/usa-portfolio-guard.yml"),
+  read(".github/workflows/usa-browser-smoke.yml"),
+];
+for (const workflow of releaseWorkflows) {
+  for (const path of [
+    "scripts/usa-*.mjs",
+    "netlify.toml",
+    ".github/workflows/usa-portfolio-guard.yml",
+    ".github/workflows/usa-browser-smoke.yml",
+  ]) {
+    assert.ok(workflow.includes("      - '" + path + "'"),
+      "USA release workflow missing security-change trigger: " + path);
+  }
+}
+console.log("PASS: Alternative Ventures USA static preview, BR separation and no-US-commerce guard");

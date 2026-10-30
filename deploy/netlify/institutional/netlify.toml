@@ -1,0 +1,13 @@
+# Dedicated USA institutional static preview only.
+# Netlify project: av-usa-institutional (c54ab12d-5d1e-42d8-89ea-bf2348c87b59).
+# Select Package directory = deploy/netlify/institutional; Base directory unset.
+# Never use on the Brazilian institutional project or its main branch.
+# Git/build connection is not yet configured: an empty Netlify URL is NOT a deploy.
+[build]
+  base = "."
+  command = "node scripts/usa-institutional-netlify-build.mjs"
+  publish = "dist-usa-institutional"
+  functions = "deploy/netlify/institutional/empty-functions"
+
+[build.environment]
+  NODE_VERSION = "22"

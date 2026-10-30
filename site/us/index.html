@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#050816" />
+  <meta name="description" content="Alternative Ventures USA: a preview of AI-powered business, marketing, document, and financial intelligence products being localized for the United States." />
+  <meta name="robots" content="noindex,nofollow" />
+  <!-- Demo-only page: prohibit scripts, network connections, forms and embedded providers. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'" />
+  <title>Alternative Ventures USA — Product Localization Preview</title>
+  <style>
+    :root{--bg:#040713;--ink:#f8faff;--muted:#adbbd4;--line:rgba(255,255,255,.13);--accent:#35d5ff;--mint:#31e6a5;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark}
+    *,*::before,*::after{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;min-height:100vh;color:var(--ink);background:radial-gradient(ellipse at 85% 9%,rgba(53,213,255,.16),transparent 35%),radial-gradient(ellipse at 15% 0,rgba(79,140,255,.23),transparent 38%),linear-gradient(180deg,var(--bg),#080c1e 70%,var(--bg))}
+    a{color:inherit;text-decoration:none}
+    a:focus-visible{outline:3px solid var(--accent);outline-offset:5px;border-radius:5px}
+    .skip-link{position:absolute;left:16px;top:-90px;z-index:1000;padding:12px 18px;border-radius:8px;background:#fff;color:#041025;font-size:14px;font-weight:800}
+    .skip-link:focus{top:12px}
+    .wrap{width:min(1140px,calc(100% - 38px));margin-inline:auto}
+    header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:25px 0;border-bottom:1px solid var(--line)}
+    .wordmark{display:flex;flex-direction:column;justify-content:center;min-height:44px;line-height:1.05;text-transform:uppercase;letter-spacing:.22em}
+    .wordmark span{font-size:15px;font-weight:350}
+    .wordmark strong{font-size:12px;color:var(--accent);letter-spacing:.4em;margin-top:6px}
+    .nav{display:flex;gap:22px;align-items:center;flex-wrap:wrap;font-size:13px;font-weight:700;color:#cdd9ed}
+    .nav a{display:inline-flex;align-items:center;min-height:44px;padding:8px 0}
+    .region-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mint);font-weight:800}
+    .eyebrow{display:inline-flex;align-items:center;gap:10px;letter-spacing:.12em;text-transform:uppercase;font:600 11px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--mint)}
+    .eyebrow::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--mint);box-shadow:0 0 15px rgba(49,230,165,.6)}
+    .hero{padding:105px 0 90px;max-width:900px}
+    h1{font-size:clamp(49px,7.5vw,100px);line-height:.98;letter-spacing:-.077em;margin:26px 0 28px;font-weight:900}
+    h1 em{font-style:normal;color:var(--accent)}
+    .lead{font-size:clamp(17px,2.1vw,21px);line-height:1.65;color:#cbd6e9;max-width:740px}
+    .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+    .primary,.secondary{display:inline-flex;justify-content:center;align-items:center;min-height:49px;padding:13px 20px;border-radius:999px;font-size:14px;font-weight:800}
+    .primary{background:linear-gradient(95deg,#fff,#86c8ff,#35d5ff);color:#041025}
+    .secondary{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.05)}
+    .notice{margin-top:25px;font-size:12px;line-height:1.7;color:#9cabc6}
+    .section{padding:55px 0}
+    h2{font-size:clamp(33px,4vw,54px);letter-spacing:-.06em;margin:13px 0 17px;line-height:1.1}
+    .section-intro{max-width:760px;color:var(--muted);font-size:16px;line-height:1.65;margin:0 0 30px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .card{position:relative;background:linear-gradient(145deg,rgba(255,255,255,.077),rgba(255,255,255,.025));border:1px solid var(--line);border-radius:22px;padding:30px;display:flex;flex-direction:column;min-height:270px;overflow:hidden}
+    .card::after{content:"";position:absolute;width:220px;height:220px;border-radius:50%;right:-160px;top:-120px;pointer-events:none;background:var(--glow,rgba(53,213,255,.20));filter:blur(34px)}
+    .card small{font:700 11px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--mint)}
+    .card h3{font-size:clamp(24px,2.4vw,30px);letter-spacing:-.04em;margin:24px 0 13px}
+    .card p{color:#b6c4de;font-size:15px;line-height:1.7;margin:0 0 25px;max-width:490px}
+    .card .tag{margin-top:auto;width:fit-content;border:1px solid rgba(255,255,255,.2);border-radius:999px;color:#d7e0f2;font-size:11px;font-weight:750;padding:8px 12px}
+    .card.wide{grid-column:1/-1;min-height:230px}
+    .product-demo-pending{display:inline-flex;margin:16px 0 0;align-items:center;min-height:44px;color:#d7e0f2;font-size:13px;font-weight:700;padding:8px 0}
+    .demo-data-note{margin:0 0 24px;padding:15px 18px;border:1px solid rgba(53,213,255,.42);border-radius:12px;background:rgba(53,213,255,.07);color:#d7e5f6;font-size:14px;line-height:1.65}
+    .card .demo-caveat{margin:12px 0 0;font-size:12px;line-height:1.6;color:#d2dcef}
+    .division{border-top:1px solid var(--line);margin-top:60px;padding:40px 0 65px}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+    .step{padding:20px 0}
+    .step strong{color:var(--accent);font:800 12px ui-monospace,SFMono-Regular,Consolas,monospace}
+    .step h3{font-size:20px;margin:13px 0}
+    .step p{color:var(--muted);font-size:14px;line-height:1.65;margin:0}
+    footer{border-top:1px solid var(--line);padding:25px 0 45px;display:flex;gap:18px;align-items:center;justify-content:space-between;color:#97a5c0;font-size:12px;flex-wrap:wrap}
+    @media(max-width:720px){.hero{padding:68px 0}.grid,.steps{grid-template-columns:1fr}.card.wide{grid-column:auto}.nav{gap:12px}.card{min-height:auto}.section{padding:40px 0}}
+    /* Preserve distinguishable controls and keyboard focus in Windows high-contrast mode. */
+    @media(forced-colors:active){
+      .card{background:Canvas;border-color:CanvasText}
+      .card .tag{border-color:CanvasText;color:CanvasText}
+      .product-demo-pending{color:CanvasText}
+      .primary,.secondary{background:Canvas;color:LinkText;border:1px solid LinkText}
+      a:focus-visible{outline:3px solid Highlight;outline-offset:5px}
+    }
+    /* Honor user-requested text scaling without forcing horizontal scrolling. */
+    @media(max-width:420px){.wordmark{letter-spacing:.12em}.wordmark strong{letter-spacing:.22em}.nav{gap:12px}h1{overflow-wrap:anywhere}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <header class="wrap">
+    <a href="#main-content" class="wordmark" aria-label="Alternative Ventures USA, skip to content">
+      <span>Alternative</span><strong>Ventures</strong>
+    </a>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="#products">Products</a>
+      <a href="#approach">Our approach</a>
+      <span class="region-label" aria-label="United States preview only">US preview only</span>
+    </nav>
+  </header>
+
+  <main id="main-content" tabindex="-1">
+    <section class="hero wrap">
+      <div class="eyebrow">USA · localization program</div>
+      <h1>Build what matters. <em>Move faster.</em></h1>
+      <p class="lead">Alternative Ventures builds practical software where complex operations, data, and AI meet. We are preparing selected products for the United States — carefully, independently, and without disrupting our Brazilian customers.</p>
+      <div class="actions">
+        <a class="primary" href="#products">Explore the product lineup ↗</a>
+        <a class="secondary" href="#approach">How we work</a>
+      </div>
+      <p class="notice">Preview only. US commercial availability, onboarding, data connectors, subscriptions and regulated features are subject to product-by-product validation. This page does not open accounts or accept orders.</p>
+    </section>
+
+    <section id="products" class="section wrap">
+      <div class="eyebrow">Selected localization tracks</div>
+      <h2>Existing technology.<br />A new market.</h2>
+      <p class="section-intro">Our initial software localization effort focuses on five product experiences that can reuse significant parts of existing interfaces and workflows. These are product descriptions, not live US service offerings.</p>
+      <p class="demo-data-note" id="usa-demo-data-note">Fictional sample data only. Do not enter personal, customer, financial, or confidential information in these demos. No real accounts, submissions, or transactions are enabled.</p>
+      <div class="grid">
+        <article class="card" style="--glow:rgba(49,230,165,.22)">
+          <small>Marketing intelligence</small><h3>MODO</h3>
+          <p>AI-assisted brand planning, creative production, campaign organization and review workflows for small teams.</p>
+          <span class="tag">English preview in development</span>
+          <p class="product-demo-pending">Dedicated USA preview pending independent deploy verification.</p>
+        </article>
+        <article class="card" style="--glow:rgba(79,140,255,.24)">
+          <small>Conversational business tools</small><h3>SmartBots</h3>
+          <p>Business mini-sites, assisted answers, lead capture, a lightweight CRM and follow-up drafts under human control.</p>
+          <span class="tag">English preview in development</span>
+          <p class="product-demo-pending">Dedicated USA preview pending independent deploy verification.</p>
+        </article>
+        <article class="card" style="--glow:rgba(155,124,255,.28)">
+          <small>Document operations</small><h3>DocWallet</h3>
+          <p>Secure document organization, workflow automation, integrity evidence and document intelligence. US signature validity is a separate workstream.</p>
+          <span class="tag">English preview in development</span>
+          <p class="product-demo-pending">Dedicated USA preview pending independent deploy verification.</p>
+        </article>
+        <article class="card" style="--glow:rgba(53,213,255,.28)">
+          <small>Financial research software</small><h3>F-Insight</h3>
+          <p>Research workflows, watchlists, indicators, analytical tools and professional reporting. US data licensing is not yet enabled.</p>
+          <span class="tag">English preview in development</span>
+          <p class="product-demo-pending">Dedicated USA preview pending independent deploy verification.</p>
+        </article>
+        <article class="card wide" style="--glow:rgba(49,230,165,.22)">
+          <small>Business operating system</small><h3>NexOffices</h3>
+          <p>A command center connecting CRM, operations, documents, marketing and AI-assisted coordination. US accounting, payments and tax workflows require additional integration work.</p>
+          <span class="tag">English preview in development</span>
+          <p class="demo-caveat" id="nexoffices-preview-note">Dedicated USA preview not yet deployed. The independent Render staging build is not approved or linked from this page.</p>
+          <p class="product-demo-pending">Dedicated USA preview pending independent deploy verification.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="division wrap" id="approach">
+      <div class="eyebrow">How we approach the US</div>
+      <h2>Localize with discipline.</h2>
+      <p class="section-intro">The goal is not to translate labels and pretend every service is ready. Each product earns its launch through verified functionality, contracts, privacy, accessibility and support readiness.</p>
+      <div class="steps">
+        <div class="step"><strong>01 · PRESERVE</strong><h3>Protect Brazil</h3><p>Separate development branches, region-specific configuration and no unauthorized production merges.</p></div>
+        <div class="step"><strong>02 · ADAPT</strong><h3>Make it local</h3><p>English interfaces first; US-specific infrastructure and legal requirements validated separately.</p></div>
+        <div class="step"><strong>03 · VALIDATE</strong><h3>Earn readiness</h3><p>Automated builds, regression checks and careful real-user pilots before commercial launch.</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    <span>Alternative Ventures USA · Product preview</span>
+    <span>US operations and regulated services are not yet presented as active.</span>
+    <span>Regional environments remain separate.</span>
+  </footer>
+</body>
+</html>
