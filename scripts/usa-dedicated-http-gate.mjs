@@ -130,6 +130,10 @@ export function assessResponse({ path, allowed, status, headers, body, redirecte
       errors.push('blocked-route-not-static-denial');
     if (/<(?:script|form|iframe|img|picture|video|audio|source|link|style|object|embed|svg|base)\b|<meta\b[^>]*http-equiv\s*=\s*["']?refresh\b/i.test(deniedBody))
       errors.push('blocked-route-has-active-content');
+    // A 404 denial must not provide a clickable escape hatch into BR,
+    // login or payment destinations, even when it has no active scripts.
+    if (/<a\b/i.test(deniedBody))
+      errors.push('blocked-route-navigation-anchor');
     if (/<title>[^<]*(login|sign in|checkout|pix|dashboard)/i.test(deniedBody))
       errors.push('blocked-route-serves-sensitive-app');
     // An inert-looking 404 can still execute JavaScript through a body
@@ -268,6 +272,8 @@ if (process.argv.includes('--self-test')) {
   for (const deniedBody of [
     '<title>Not Found</title><div id="root"></div><script src="/assets/app.js"></script>',
     '<h1>Page not found</h1><form action="/login"></form>',
+    '<h1>Page not found</h1><a href="/login">Sign in</a>',
+    '<h1>Page not found</h1><a href="https://example.com">External site</a>',
     '<h1>Page not found</h1><meta http-equiv="refresh" content="0;url=/login">',
     '<h1>Page not found</h1><img src="https://tracker.example/pixel">',
     '<h1>Page not found</h1><link rel="preload" href="https://tracker.example/script.js">',
