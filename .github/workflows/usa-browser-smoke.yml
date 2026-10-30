@@ -21,6 +21,10 @@ on:
       - 'scripts/usa-review-index.mjs'
       - 'scripts/usa-review-browser.mjs'
       - 'scripts/usa-package-integrity.mjs'
+      - 'scripts/usa-*.mjs'
+      - 'scripts/verify-usa-portfolio.mjs'
+      - 'netlify.toml'
+      - '.github/workflows/usa-portfolio-guard.yml'
       - '.github/workflows/usa-browser-smoke.yml'
   workflow_dispatch:
 permissions:
