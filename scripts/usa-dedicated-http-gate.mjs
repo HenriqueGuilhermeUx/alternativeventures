@@ -271,7 +271,7 @@ if (process.argv.includes('--self-test')) {
     '<h1>Page not found</h1><meta http-equiv="refresh" content="0;url=/login">',
     '<h1>Page not found</h1><img src="https://tracker.example/pixel">',
     '<h1>Page not found</h1><link rel="preload" href="https://tracker.example/script.js">',
-    '<html><body onload="fetch(\\'/api/v1/health\\')"><h1>Page not found</h1></body></html>',
+    '<html><body onload="alert(1)"><h1>Page not found</h1></body></html>',
     '<html><body style="background:url(https://tracker.example/pixel)"><h1>Page not found</h1></body></html>',
     '<h1>Page not found</h1><div onclick="alert(1)">Not available</div>',
     '<h1>Page not found</h1><div srcdoc="&lt;script&gt;alert(1)&lt;/script&gt;"></div>',
