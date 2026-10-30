@@ -132,6 +132,16 @@ export function assessResponse({ path, allowed, status, headers, body, redirecte
       errors.push('blocked-route-has-active-content');
     if (/<title>[^<]*(login|sign in|checkout|pix|dashboard)/i.test(deniedBody))
       errors.push('blocked-route-serves-sensitive-app');
+    // An inert-looking 404 can still execute JavaScript through a body
+    // onload handler (without any <script> tag), or use inline styles to
+    // fetch third-party resources. Do not accept those as static denials.
+    if (/\\bon[a-z]+\\s*=/i.test(deniedBody))
+      errors.push('blocked-route-inline-event-handler');
+    if (/\\b(?:style|srcdoc)\\s*=/i.test(deniedBody) || /javascript\\s*:/i.test(deniedBody))
+      errors.push('blocked-route-active-attribute');
+    // Refresh response headers can navigate even when the HTTP status is 404.
+    if (String(headers?.refresh || '').trim())
+      errors.push('blocked-route-refresh-header');
   }
   return { path, expected_status: allowed ? 200 : 404, observed_status: status,
     passed: errors.length === 0, errors };
@@ -261,11 +271,19 @@ if (process.argv.includes('--self-test')) {
     '<h1>Page not found</h1><meta http-equiv="refresh" content="0;url=/login">',
     '<h1>Page not found</h1><img src="https://tracker.example/pixel">',
     '<h1>Page not found</h1><link rel="preload" href="https://tracker.example/script.js">',
+    '<html><body onload="fetch(\\'/api/v1/health\\')"><h1>Page not found</h1></body></html>',
+    '<html><body style="background:url(https://tracker.example/pixel)"><h1>Page not found</h1></body></html>',
+    '<h1>Page not found</h1><div onclick="alert(1)">Not available</div>',
+    '<h1>Page not found</h1><div srcdoc="&lt;script&gt;alert(1)&lt;/script&gt;"></div>',
   ]) assert.equal(assessResponse({ path: '/login', allowed: false, status: 404,
     headers, body: deniedBody }).passed, false, '404 must be an inert denial page');
   assert.equal(assessResponse({ path: '/login', allowed: false, status: 404,
     headers: { ...headers, 'content-type': 'application/javascript' },
     body: '<h1>Page not found</h1>' }).passed, false);
+  assert.equal(assessResponse({ path: '/login', allowed: false, status: 404,
+    headers: { ...headers, refresh: '0; url=https://example.com' },
+    body: '<h1>Page not found</h1>' }).passed, false,
+    'A 404 Refresh header must not navigate outside the static denial');
   // All four standalone bundles intentionally serve an inert USA demo at /.
   // Treating NexOffices / as forbidden would reject a correct deployed build.
   assert.ok(targets.every(target => target.paths.includes('/')));
