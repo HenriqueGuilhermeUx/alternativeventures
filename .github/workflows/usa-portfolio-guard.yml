@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - 'site/us/**'
+      - 'deploy/netlify/institutional/**'
       - 'docs/usa-netlify-first-deploy-handoff-20261029.md'
       - 'scripts/verify-usa-portfolio.mjs'
       - 'scripts/usa-*.mjs'
