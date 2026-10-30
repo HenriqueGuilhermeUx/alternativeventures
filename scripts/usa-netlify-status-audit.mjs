@@ -12,7 +12,7 @@ const targets = [
   ['MODO USA', 'modo', 163, 'feature/usa-modo-smartbots-localization-20261024', 'netlify/av-usa-modo/deploy-preview', 'deploy-preview-163--av-usa-modo.netlify.app'],
   ['DocWallet', 'docwallet', 12, 'feature/usa-localized-preview-20261024', 'netlify/docwallet/deploy-preview', 'deploy-preview-12--docwallet.netlify.app'],
   ['F-Insight', 'f-insight', 26, 'feature/usa-localized-preview-20261024', 'netlify/f-insight/deploy-preview', 'deploy-preview-26--f-insight.netlify.app'],
-  ['Institutional', 'alternativeventures', 3, 'feature/usa-portfolio-preview-20261024', 'netlify/bucolic-smakager-91800f/deploy-preview', 'deploy-preview-3--bucolic-smakager-91800f.netlify.app'],
+  ['Institutional USA dedicated', 'alternativeventures', 3, 'feature/usa-portfolio-preview-20261024', 'netlify/av-usa-institutional/deploy-preview', 'deploy-preview-3--av-usa-institutional.netlify.app'],
 ];
 
 export function assess(target, pr, statuses) {
@@ -67,6 +67,25 @@ if (process.argv.includes('--self-test')) {
     [pr, [{ ...good[0], target_url: 'https://' + target[5] + '/#spoofed' }]],
     [{ ...pr, head: { ...pr.head, sha: 'invalid' } }, good],
   ]) assert.equal(assess(target, p, statuses).classification, 'unverified');
+  // The old institutional preview belongs to the Brazilian Netlify project.
+  // Its green GitHub status must never attest the new dedicated USA-only site.
+  const institutional = targets[3];
+  const institutionalPr = { number: institutional[2], state: 'open', draft: true,
+    head: { sha, ref: institutional[3],
+      repo: { full_name: owner + '/alternativeventures' } } };
+  const legacyBrStatus = { context: 'netlify/bucolic-smakager-91800f/deploy-preview',
+    state: 'success',
+    target_url: 'https://deploy-preview-3--bucolic-smakager-91800f.netlify.app' };
+  assert.equal(assess(institutional, institutionalPr, [legacyBrStatus]).classification, 'unverified');
+  assert.equal(assess(institutional, institutionalPr, [
+    { ...legacyBrStatus, context: institutional[4] }]).classification, 'unverified');
+  assert.equal(assess(institutional, institutionalPr, [{
+    context: institutional[4], state: 'success',
+    target_url: 'https://' + institutional[5] }]).classification, 'github-status-success-only');
+  // Even a future green dedicated-site status is not an HTTP/visual release signoff.
+  assert.equal(assess(institutional, institutionalPr, [{
+    context: institutional[4], state: 'success',
+    target_url: 'https://' + institutional[5] }]).independently_verified_live_deploy_sha, false);
   console.log('PASS: exact-HEAD status audit rejects missing, pending, duplicated, wrong-host, non-draft and invalid-SHA evidence');
 } else {
   const report = {
