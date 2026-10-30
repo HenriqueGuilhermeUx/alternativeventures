@@ -85,4 +85,21 @@ assert.ok(!/deploy-preview-163--modo1|deploy-preview-12--docwallet|deploy-previe
   "Institutional page must not advertise legacy staging hosts");
 assert.match(brazil, /<html lang="pt-BR">/, "Brazil locale must remain intact");
 assert.ok(netlify.includes('publish = "site"'), "Existing publishing root must remain unchanged");
+// Prevent CI from silently skipping a security change to the other workflow,
+ // a USA gate script, or the institutional Netlify configuration.
+const releaseWorkflows = [
+  read(".github/workflows/usa-portfolio-guard.yml"),
+  read(".github/workflows/usa-browser-smoke.yml"),
+];
+for (const workflow of releaseWorkflows) {
+  for (const path of [
+    "scripts/usa-*.mjs",
+    "netlify.toml",
+    ".github/workflows/usa-portfolio-guard.yml",
+    ".github/workflows/usa-browser-smoke.yml",
+  ]) {
+    assert.ok(workflow.includes("      - '" + path + "'"),
+      "USA release workflow missing security-change trigger: " + path);
+  }
+}
 console.log("PASS: Alternative Ventures USA static preview, BR separation and no-US-commerce guard");
