@@ -57,10 +57,14 @@ function unsafeAnchorLinks(body, currentPath) {
     try {
       const url = new URL(href, 'https://usa-preview.invalid' + currentPath);
       // Percent-encoded paths can be decoded by intermediaries before routing.
-      // USA demos use plain static routes, so ambiguous encodings fail closed.
+      // USA demos use plain static routes, so ambiguous encodings, doubled
+      // slashes and hash-router navigation to sensitive routes fail closed.
+      // Nested /us/login and /us/api are forbidden even though /us is allowed.
       if (url.origin !== 'https://usa-preview.invalid' ||
-          url.pathname.includes('%') ||
-          /^\/(?:app|login|auth|admin|api|checkout|billing|pix|wallet|pj|office|br)(?:\/|$)/i.test(url.pathname)) {
+          url.pathname.includes('%') || url.pathname.includes('//') ||
+          /^\/(?:app|login|auth|admin|api|checkout|billing|pix|wallet|pj|office|br)(?:\/|$)/i.test(url.pathname) ||
+          /^\/us\/(?:login|auth|admin|api|checkout|billing|pix|wallet|pj|office|br)(?:\/|$)/i.test(url.pathname) ||
+          /^#(?:\/|!\/)/.test(url.hash)) {
         issues.push('unsafe-navigation-anchor');
       }
     } catch { issues.push('invalid-navigation-anchor'); }
@@ -168,7 +172,9 @@ if (process.argv.includes('--self-test')) {
     'https://trynexa.com.br', '//trynexa.com.br', 'javascript:alert(1)',
     'https://usa-preview.invalid/us', 'mailto:real@example.com',
     '/login', '/api/v1/health', '../app', '/br', '/%61pp',
-    '/us/%2e%2e/login', 'https://example.com',
+    '/us/login', '/us/auth/login', '/us/admin', '/us/api/v1/health',
+    '/us/checkout', '/us/billing', '/us/wallet', '/us//login',
+    '#/login', '#!/checkout', '/us/%2e%2e/login', 'https://example.com',
     '&#104;ttps://example.com',
   ]) {
     const body = html.replace('</body>', '<a href="' + href + '">Go</a></body>');
