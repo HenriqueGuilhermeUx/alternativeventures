@@ -173,50 +173,43 @@ try {
   await reduced.goto(base + '/us/', { waitUntil: 'domcontentloaded' });
   assert.equal(await reduced.locator('html').evaluate(element => getComputedStyle(element).scrollBehavior), 'auto');
   await reduced.close();
-  // Windows high-contrast mode: all five staging links must be reachable by
-  // keyboard in document order, with a visible focus indicator.
+  // Windows high-contrast mode: every remaining navigation control must
+  // be keyboard reachable in document order. Pending previews must never
+  // masquerade as clickable links or enter the tab sequence.
   const contrast = await browser.newPage({
     viewport: { width: 390, height: 850 },
     forcedColors: 'active',
   });
   await contrast.goto(base + '/us/', { waitUntil: 'domcontentloaded' });
   await contrast.getByRole('heading', { name: /Build what matters/i }).waitFor();
-  const expectedKeyboardLinks = await contrast.locator('a.product-demo-link').evaluateAll(
+  assert.equal(await contrast.locator('a.product-demo-link, a.product-demo-pending').count(), 0,
+    'Unverified demo cards must not enter keyboard navigation');
+  const expectedKeyboardLinks = await contrast.locator('a').evaluateAll(
     links => links.map(link => link.getAttribute('href'))
   );
+  assert.deepEqual(expectedKeyboardLinks,
+    ['#main-content', '#main-content', '#products', '#approach', '#products', '#approach'],
+    'Only verified local institutional navigation may be focusable');
   const focusedKeyboardLinks = [];
-  const focusedHeaderLinks = [];
-  const expectedHeaderLinks = await contrast.locator('header a').evaluateAll(links => links.map(link => link.getAttribute('href')));
-  for (let tab = 0; tab < 20 && focusedKeyboardLinks.length < 5; tab++) {
+  for (let tab = 0; tab < expectedKeyboardLinks.length; tab++) {
     await contrast.keyboard.press('Tab');
     const focus = await contrast.evaluate(() => {
       const element = document.activeElement;
       const style = getComputedStyle(element);
       return {
-        className: element.className,
-        inHeader: Boolean(element.closest('header')),
         href: element.getAttribute('href'),
         outlineStyle: style.outlineStyle,
         outlineWidth: parseFloat(style.outlineWidth),
       };
     });
-    if (focus.inHeader) {
-      assert.equal(focus.outlineStyle, 'solid', 'High-contrast header link needs a solid keyboard focus ring');
-      assert.ok(focus.outlineWidth >= 3, 'High-contrast header focus ring must be at least 3px');
-      focusedHeaderLinks.push(focus.href);
-    }
-    if (focus.className === 'product-demo-link') {
-      assert.equal(focus.outlineStyle, 'solid', 'High-contrast demo link needs a solid keyboard focus ring');
-      assert.ok(focus.outlineWidth >= 3, 'High-contrast demo link focus ring must be at least 3px');
-      focusedKeyboardLinks.push(focus.href);
-    }
+    assert.equal(focus.outlineStyle, 'solid', 'Every keyboard navigation link needs a visible high-contrast focus ring');
+    assert.ok(focus.outlineWidth >= 3, 'High-contrast focus ring must be at least 3px');
+    focusedKeyboardLinks.push(focus.href);
   }
   assert.deepEqual(focusedKeyboardLinks, expectedKeyboardLinks,
-    'All five USA demos must be keyboard reachable in order in forced-colors mode');
-  assert.deepEqual(focusedHeaderLinks, expectedHeaderLinks,
-    'Every header link must be keyboard reachable in order with a visible high-contrast focus ring');
+    'All allowed navigation links must be keyboard reachable in order');
   await contrast.close();
-  console.log('PASS: institutional USA 320/390/1280px browser QA, refresh, reduced motion, keyboard focus, forced-colors keyboard navigation, zero third-party requests and staging links');
+  console.log('PASS: institutional USA 320/390/1280px browser QA, refresh, reduced motion, keyboard focus, forced-colors keyboard navigation, zero third-party requests and gated demo cards');
 } finally {
   await browser?.close();
   server.kill('SIGTERM');
