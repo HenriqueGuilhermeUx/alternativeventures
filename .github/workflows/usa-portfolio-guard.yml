@@ -26,4 +26,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify dedicated institutional USA Netlify static package
+        run: |
+          node scripts/usa-institutional-netlify-build.mjs --self-test
+          SITE_ID=c54ab12d-5d1e-42d8-89ea-bf2348c87b59 SITE_NAME=av-usa-institutional CONTEXT=production BRANCH=feature/usa-portfolio-preview-20261024 COMMIT_REF="$(git rev-parse HEAD)" node scripts/usa-institutional-netlify-build.mjs
+          test "$(find dist-usa-institutional -maxdepth 1 -type f | wc -l)" -eq 5
       - run: node scripts/verify-usa-portfolio.mjs
