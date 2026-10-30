@@ -38,9 +38,23 @@ function directives(value) {
 // following a link. This is a conservative HTML anchor audit, not a DOM parser.
 function unsafeAnchorLinks(body, currentPath) {
   const issues = [];
-  for (const tag of String(body || '').match(/<a\b[^>]*>/gi) || []) {
-    const match = tag.match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
-    if (!match) continue;
+  const html = String(body || '');
+  // HTML permits ">" inside quoted attributes. A naive [^>]* scanner
+  // would truncate the tag before a later, potentially unsafe href.
+  const tags = html.match(/<a\b(?:[^>"']|"[^"]*"|'[^']*')*>/gi) || [];
+  // Never silently ignore a malformed anchor that the browser might recover.
+  if ((html.match(/<a\b/gi) || []).length !== tags.length)
+    issues.push('ambiguous-anchor-tag');
+  for (const tag of tags) {
+    // A word boundary also matches data-href. Only a standalone attribute
+    // may determine navigation, and duplicate href attributes are ambiguous.
+    const matches = [...tag.matchAll(/(?:^|\s)href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/gi)];
+    if (matches.length > 1) {
+      issues.push('duplicate-anchor-href');
+      continue;
+    }
+    if (!matches.length) continue;
+    const match = matches[0];
     const href = (match[1] ?? match[2] ?? match[3]).trim();
     // Reject entity-encoded URLs: source text and browser navigation could differ.
     if (!href || /&(?:#\d+|#x[0-9a-f]+|[a-z]+);/i.test(href)) {
@@ -168,6 +182,21 @@ if (process.argv.includes('--self-test')) {
   assert.equal(assessResponse(good).passed, true);
   assert.equal(assessResponse({ ...good, body: html.replace('</body>',
     '<a href="/us/demo">Preview</a></body>') }).passed, true);
+  assert.equal(assessResponse({ ...good, body: html.replace('</body>',
+    '<a data-note=">" href="/us/demo">Preview</a></body>') }).passed, true);
+  assert.equal(assessResponse({ ...good, body: html.replace('</body>',
+    '<a data-href="/login" href="/us/demo">Preview</a></body>') }).passed, true);
+  for (const anchorMarkup of [
+    '<a data-note=">" href="/login">Bad</a>',
+    '<a data-href="/us/demo" href="/login">Bad</a>',
+    '<a href="/us/demo" href="/login">Bad</a>',
+    '<a data-note="unterminated href="/login">Bad</a>',
+  ]) {
+    const result = assessResponse({ ...good,
+      body: html.replace('</body>', anchorMarkup + '</body>') });
+    assert.equal(result.passed, false, 'Ambiguous or unsafe anchor: ' + anchorMarkup);
+    assert.ok(result.errors.some(x => /anchor/.test(x)));
+  }
   for (const href of [
     'https://trynexa.com.br', '//trynexa.com.br', 'javascript:alert(1)',
     'https://usa-preview.invalid/us', 'mailto:real@example.com',
