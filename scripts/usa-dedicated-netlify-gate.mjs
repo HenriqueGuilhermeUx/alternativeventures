@@ -49,6 +49,11 @@ export function assess(input) {
     const project = matches[0];
     const expectedSha = heads[name];
     const deploy = project?.currentDeploy?.currentDeploy;
+    // Netlify may expose a branchVersionOfSite hostname before any first deploy.
+    // Record that misleading hint, but never promote it into a deploy ID.
+    const branchUrlWithoutDeploy = Boolean(
+      project?._enrichedFields?.urls?.branchVersionOfSite &&
+      (!deploy || Object.keys(deploy).length === 0));
     const detail = deployDetails[id] || null;
     const detailIdentityOk = Boolean(detail && detail.id === deploy?.id &&
       detail.site_id === id && detail.state === 'ready');
@@ -133,6 +138,7 @@ export function assess(input) {
       // directly from PR #163. Never equate those two SHAs or waive ancestry.
       // Its independent branch gate must validate the GitHub comparison,
       // resolved branch SHA, Netlify detail, security rules and static-only build.
+      else if (secretScanFindings) status = 'deploy-secret-scan-findings';
       else if (name === 'av-usa-modo' && detailIdentityOk &&
                detail?.branch === 'deploy/modo-usa-netlify-20261028')
         status = 'requires-independent-modo-branch-provenance-gate';
@@ -141,7 +147,6 @@ export function assess(input) {
       else if (detail && !detailBranchOk) status = 'deploy-branch-mismatch';
       else if (detail && !detailContextOk) status = 'deploy-context-mismatch';
       else if (detail && !detailShaOk) status = 'deploy-detail-sha-mismatch';
-      else if (secretScanFindings) status = 'deploy-secret-scan-findings';
       else if (detail && !secretScanOk) status = 'deploy-secret-scan-unverified';
       else if (noHeaderRules || headerRuleCount === 0) status = 'deploy-missing-security-headers';
       else if (noRedirectRules || redirectRuleCount === 0) status = 'deploy-missing-route-guard';
@@ -159,6 +164,7 @@ export function assess(input) {
       team_verified: teamOk, canonical_url_verified: urlOk,
       team_login_protected_all_deploys: protectedForAllDeploys,
       deploy_id: typeof deploy?.id === 'string' ? deploy.id : null,
+      branch_url_exists_without_deploy: branchUrlWithoutDeploy,
       deploy_detail_identity_verified: detailIdentityOk,
       deploy_urls_verified: Boolean(detailUrlsOk),
       deploy_detail_branch_verified: Boolean(detailBranchOk),
@@ -199,6 +205,18 @@ if (process.argv.includes('--self-test')) {
   const expectedHeads = Object.fromEntries(Object.keys(sites).map(name => [name, sha]));
   const input = { projects, expectedHeads };
   assert.deepEqual(assess(input).projects.map(p => p.status), Array(4).fill('no-deploy'));
+  // Netlify can pre-allocate a branch URL for a site with no published files.
+  const reservedBranchUrl = { ...projects[1], _enrichedFields: {
+    ...projects[1]._enrichedFields, urls: {
+      ...projects[1]._enrichedFields.urls,
+      branchVersionOfSite: 'http://preview--av-usa-docwallet.netlify.app',
+    } } };
+  const reserved = assess({ projects: [projects[0], reservedBranchUrl, ...projects.slice(2)],
+    expectedHeads }).projects[1];
+  assert.equal(reserved.status, 'no-deploy');
+  assert.equal(reserved.deploy_id, null);
+  assert.equal(reserved.branch_url_exists_without_deploy, true);
+  assert.equal(reserved.release_approved, false);
   const ready = { ...projects[0], currentDeploy: { currentDeploy: {
     id: 'test-deploy', state: 'ready', commit_ref: sha,
   } } };
@@ -305,6 +323,13 @@ if (process.argv.includes('--self-test')) {
   assert.equal(assess(withDetails(modoDeployBranch)).projects[0].status,
     'requires-independent-modo-branch-provenance-gate');
   assert.equal(assess(withDetails(modoDeployBranch)).release_approved, false);
+  // Even a separate MODO deploy branch must never hide a Netlify secret finding.
+  const modoWithFinding = { ...modoDeployBranch, deploy_validations_report: {
+    secret_scan_result: { scannedFilesCount: 451,
+      secretsScanMatches: ['redacted-finding'], enhancedSecretsScanMatches: [] },
+  } };
+  assert.equal(assess(withDetails(modoWithFinding)).projects[0].status,
+    'deploy-secret-scan-findings');
   assert.equal(assess(withDetails({ ...modoDeployBranch, branch: 'main' }))
     .projects[0].status, 'deploy-branch-mismatch');
   for (const context of ['deploy-preview', 'branch-deploy', undefined]) {
