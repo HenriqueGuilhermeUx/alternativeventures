@@ -34,9 +34,24 @@ export function assessNetlify(manifest, evidence) {
         item?.independently_verified_live_deploy_sha !== false) {
       problems.push('Missing, duplicate, invalid or non-success exact-HEAD status for ' + pr);
     }
-    if (pr === 'HenriqueGuilhermeUx/alternativeventures#3' &&
-        item?.pr_head_sha?.toLowerCase() !== manifest.pr_head_sha.toLowerCase()) {
-      problems.push('Institutional Netlify status does not match screenshot manifest HEAD');
+    if (pr === 'HenriqueGuilhermeUx/alternativeventures#3') {
+      if (item?.pr_head_sha?.toLowerCase() !== manifest.pr_head_sha.toLowerCase()) {
+        problems.push('Institutional Netlify status does not match screenshot manifest HEAD');
+      }
+      // The repository's older preview belongs to the Brazilian institutional
+      // Netlify site. Even a green exact-HEAD status there is NOT USA evidence.
+      const expectedContext = 'netlify/av-usa-institutional/deploy-preview';
+      let dedicatedHostOk = false;
+      try {
+        const url = new URL(item?.github_netlify_target);
+        dedicatedHostOk = url.protocol === 'https:' &&
+          url.hostname === 'deploy-preview-3--av-usa-institutional.netlify.app' &&
+          (url.pathname === '/' || url.pathname === '') &&
+          !url.username && !url.password && !url.port && !url.search && !url.hash;
+      } catch { /* missing target is not USA evidence */ }
+      if (item?.github_netlify_context !== expectedContext || !dedicatedHostOk) {
+        problems.push('Institutional preview status is not from dedicated USA Netlify site');
+      }
     }
   }
   if (entries.some(item => !EXPECTED_NETLIFY_PRS.includes(item?.pr))) {
@@ -209,9 +224,29 @@ if (process.argv.includes('--self-test')) {
     github_reports_success_for_exact_head: true, github_netlify_state: 'success',
     classification: 'github-status-success-only',
     independently_verified_live_deploy_sha: false,
+    ...(pr === 'HenriqueGuilhermeUx/alternativeventures#3' ? {
+      github_netlify_context: 'netlify/av-usa-institutional/deploy-preview',
+      github_netlify_target: 'https://deploy-preview-3--av-usa-institutional.netlify.app',
+    } : {}),
   }));
   const netlify = { schema_version: 1, github_status_success_count: 4, previews };
   assert.equal(assessNetlify(manifest, netlify).status, 'github-status-success-only');
+  const legacyInstitutional = previews.map(item =>
+    item.pr.endsWith('alternativeventures#3') ? {
+      ...item,
+      github_netlify_context: 'netlify/bucolic-smakager-91800f/deploy-preview',
+      github_netlify_target: 'https://deploy-preview-3--bucolic-smakager-91800f.netlify.app',
+    } : item);
+  assert.equal(assessNetlify(manifest, { ...netlify,
+    previews: legacyInstitutional }).status, 'unverified');
+  const spoofedInstitutional = previews.map(item =>
+    item.pr.endsWith('alternativeventures#3') ? {
+      ...item,
+      github_netlify_target: 'https://deploy-preview-3--av-usa-institutional.netlify.app.evil.test',
+    } : item);
+  assert.equal(assessNetlify(manifest, { ...netlify,
+    previews: spoofedInstitutional }).status, 'unverified');
+
   assert.equal(assess(manifest, provenance, netlify).netlify_preview_status, 'github-status-success-only');
   assert.equal(assess(manifest, provenance, netlify).decision, 'not-approved');
   assert.equal(assessNetlify(manifest, { ...netlify, previews: previews.slice(1) }).status, 'unverified');
