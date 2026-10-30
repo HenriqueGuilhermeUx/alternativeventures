@@ -6,6 +6,9 @@ on:
       - 'site/us/**'
       - 'docs/usa-netlify-first-deploy-handoff-20261029.md'
       - 'scripts/verify-usa-portfolio.mjs'
+      - 'scripts/usa-*.mjs'
+      - 'netlify.toml'
+      - '.github/workflows/usa-browser-smoke.yml'
       - '.github/workflows/usa-portfolio-guard.yml'
 jobs:
   verify:
