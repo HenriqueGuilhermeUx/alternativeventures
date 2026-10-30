@@ -1,21 +1,23 @@
-/** Verify that linked Netlify staging previews actually render the expected US demo, not just HTTP 200. */
+/** Independently regression-test legacy Netlify staging; never advertise it as a verified USA deploy. */
 import assert from 'node:assert/strict';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const html = readFileSync('site/us/index.html', 'utf8');
-const allDemoUrls = [...html.matchAll(/<a\b[^>]*class="product-demo-link"[^>]*href="([^"]+)"/g)].map(x => x[1]);
-const urls = allDemoUrls.filter(url => new URL(url).hostname.endsWith('.netlify.app'));
-assert.equal(allDemoUrls.length, 5, 'The USA portfolio must expose exactly five approved demo links');
-assert.ok(allDemoUrls.includes('https://nexoffices-usa-staging.onrender.com/us/'), 'NexOffices Render link missing');
-// The separate usa-nexoffices-render-browser test exercises the fifth, isolated Render demo.
+// Legacy staging previews are exercised independently for regression QA only.
+// They are deliberately NOT linked from the institutional USA portfolio.
+assert.equal([...html.matchAll(/<a\b[^>]*class="product-demo-(?:link|pending)"/g)].length, 0,
+  'Institutional USA page must not expose unverified demo links');
+assert.ok(!/href=["']https?:\/\//i.test(html),
+  'Institutional USA page must not link to legacy external staging hosts');
+// The separate usa-nexoffices-render-browser test exercises independent Render staging.
 const expectations = [
   { label: 'MODO USA', url: 'https://deploy-preview-163--modo1.netlify.app/us/demo', heading: 'Campaign brief' },
   { label: 'SmartBots USA', url: 'https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo', heading: 'Lead inbox' },
   { label: 'DocWallet USA', url: 'https://deploy-preview-12--docwallet.netlify.app/us/workspace', heading: 'Document workspace' },
   { label: 'F-Insight USA', url: 'https://deploy-preview-26--f-insight.netlify.app/us', heading: 'Sharper financial research. A clearer way to decide.' },
 ];
-assert.deepEqual(urls, expectations.map(x => x.url), 'Portal links diverged from the approved preview destinations');
+assert.equal(expectations.length, 4, 'Keep all four legacy staging browser regression checks');
 let browser;
 try {
   browser = await chromium.launch({ headless:true });
