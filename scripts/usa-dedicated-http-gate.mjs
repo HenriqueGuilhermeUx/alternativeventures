@@ -91,6 +91,12 @@ export function assessResponse({ path, allowed, status, headers, body, redirecte
   if (redirected || (status >= 300 && status < 400)) errors.push('redirect');
   if (status !== (allowed ? 200 : 404)) errors.push('unexpected-http-status');
   if (allowed && status === 200) {
+    // CSP alone does not reliably prevent HTML meta refresh navigation.
+    // Neither an HTTP Refresh header nor a meta refresh belongs in a static
+    // USA demo, even when the destination appears to be same-origin.
+    if (String(headers?.refresh || '').trim()) errors.push('unexpected-refresh-header');
+    if (/<meta\b[^>]*\shttp-equiv\s*=\s*(?:["']refresh["']|refresh(?=[\s/>]))/i.test(String(body || '')))
+      errors.push('unexpected-meta-refresh');
     const robots = String(headers?.['x-robots-tag'] || '').toLowerCase();
     if (!robots.includes('noindex') || !robots.includes('nofollow')) errors.push('missing-robots-header');
     if (String(headers?.['x-content-type-options'] || '').toLowerCase() !== 'nosniff') errors.push('missing-nosniff');
@@ -194,6 +200,19 @@ if (process.argv.includes('--self-test')) {
     'content-security-policy': "default-src 'self'; script-src 'self'; img-src 'self' data:; frame-src 'none'; frame-ancestors 'none'; connect-src 'none'; form-action 'none'; object-src 'none'; base-uri 'none'" };
   const good = { path: '/us', allowed: true, status: 200, headers, body: html };
   assert.equal(assessResponse(good).passed, true);
+  // An otherwise valid 200 page must not redirect visitors into BR flows.
+  for (const markup of [
+    '<meta http-equiv="refresh" content="0;url=/login">',
+    '<meta content="0;url=https://trynexa.com.br" http-equiv="REFRESH">',
+    "<meta http-equiv='refresh' content='0;url=/checkout'>",
+  ]) {
+    const result = assessResponse({ ...good, body: html.replace('</head>', markup + '</head>') });
+    assert.equal(result.passed, false, 'Meta refresh must fail: ' + markup);
+    assert.ok(result.errors.includes('unexpected-meta-refresh'));
+  }
+  assert.ok(assessResponse({ ...good, headers: {
+    ...headers, refresh: '0; url=/login',
+  } }).errors.includes('unexpected-refresh-header'));
   assert.equal(assessResponse({ ...good, body: html.replace('</body>',
     '<a href="/us/demo">Preview</a></body>') }).passed, true);
   assert.equal(assessResponse({ ...good, body: html.replace('</body>',
