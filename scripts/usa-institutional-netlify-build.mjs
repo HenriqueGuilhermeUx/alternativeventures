@@ -44,8 +44,29 @@ export function buildStatic(html, output) {
   assert.doesNotMatch(html, /<\s*(?:script|form|iframe|object|embed|link)\b/i, 'No executable or remote HTML elements');
   assert.doesNotMatch(html, /\son[a-z]+\s*=/i, 'No inline event handlers');
   assert.doesNotMatch(html, /\b(?:https?:)?\/\//i, 'No external resource or BR service URLs');
-  const links = [...html.matchAll(/\bhref\s*=\s*["']([^"']+)["']/gi)].map(match => match[1]);
-  assert.ok(links.every(link => /^#[a-z][a-z0-9-]*$/i.test(link)), 'Only internal anchor links allowed');
+  // This preview needs no resource-loading elements. Reject them rather than
+  // relying on CSP or a browser to normalize ambiguous attributes.
+  assert.doesNotMatch(html, /<\s*(?:base|img|audio|video|source|picture|svg|math)\b/i,
+    'No alternate resource or navigation elements');
+  // The sole http-equiv is the reviewed CSP. A refresh tag (even with an
+  // unquoted or entity-encoded value) must never navigate a preview visitor.
+  const equivMentions = [...html.matchAll(/\bhttp-equiv\s*=/gi)];
+  const cspMeta = [...html.matchAll(/\bhttp-equiv\s*=\s*(["'])Content-Security-Policy\1/gi)];
+  assert.equal(equivMentions.length, 1, 'Only one CSP http-equiv is allowed');
+  assert.equal(cspMeta.length, 1, 'Only the CSP http-equiv is allowed');
+  // The old quoted-href scan silently accepted href=/login and duplicate
+  // href attributes. Count every href token on each actual anchor, then
+  // require exactly one quoted, fragment-only destination.
+  const anchors = [...html.matchAll(/<\s*a\b[^>]*>/gi)].map(match => match[0]);
+  assert.ok(anchors.length > 0, 'At least one local navigation anchor required');
+  for (const anchor of anchors) {
+    assert.equal([...anchor.matchAll(/\bhref\s*=/gi)].length, 1,
+      'Exactly one href per anchor required');
+    assert.match(anchor, /\bhref\s*=\s*(["'])#[a-z][a-z0-9-]*\1/i,
+      'Only quoted internal fragment links allowed');
+    assert.doesNotMatch(anchor, /\b(?:ping|download|target|formaction|action|src|srcset)\s*=/i,
+      'No alternate anchor navigation or submission attributes');
+  }
   mkdirSync(output, { recursive: true });
   assert.deepEqual(readdirSync(output), [], 'Publish directory must be empty before static build');
   for (const [name, content] of Object.entries({
@@ -74,8 +95,14 @@ if (process.argv.includes('--self-test')) {
       assert.ok(readFileSync(join(dir, name), 'utf8').length > 0);
     assert.throws(() => buildStatic(html, dir), /must be empty/);
     for (const fragment of ['<script>alert(1)</script>', '<form></form>', '<a href="/login">Login</a>',
-      '<a href="https://example.com">External</a>', '<img onerror="alert(1)">'])
-      assert.throws(() => buildStatic(html + fragment, join(dir, 'invalid')), /No |Only internal/);
+      '<a href="https://example.com">External</a>', '<img onerror="alert(1)">',
+      '<a href=/login>Login</a>', '<a href="#products" href=/login>Duplicate</a>',
+      '<a href="#products" target="_blank">Target</a>',
+      '<meta http-equiv=refresh content="0;url=/login">',
+      '<meta http-equiv="&#114;efresh" content="0;url=/login">',
+      '<base href="/login">'])
+      assert.throws(() => buildStatic(html + fragment, join(dir, 'invalid')),
+        /No |Only |Exactly one|quoted internal/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
   console.log('PASS: USA institutional static-only build guard rejects BR site, branch, integration keys and unsafe HTML');
 } else {
