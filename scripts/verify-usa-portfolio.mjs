@@ -41,29 +41,18 @@ assert.equal(new Set(sectionIds).size, sectionIds.length, "Duplicate section ids
 for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
   assert.ok(sectionIds.includes(target), "Broken in-page navigation target: " + target);
 }
-const demoAnchors = [...html.matchAll(/(<a\b[^>]*class="product-demo-link"[^>]*>)([^<]+)<\/a>/g)];
-assert.equal(demoAnchors.length, 5, "Exactly five verified staging demo links are expected");
+const pendingDemos = [...html.matchAll(/<p class="product-demo-pending">([^<]+)<\/p>/g)];
+assert.equal(pendingDemos.length, 5, "Five dedicated USA previews must remain visibly unavailable until verified");
+for (const [, notice] of pendingDemos) {
+  assert.match(notice, /pending independent deploy verification/i,
+    "Every USA product must disclose the pending deployment review");
+}
+assert.ok(!/<a\b[^>]*class="product-demo-(?:link|pending)"/i.test(html),
+  "Do not publish unverified product preview links");
 assert.match(html, /<p class="demo-data-note" id="usa-demo-data-note">Fictional sample data only\./,
-  "Visible fictional-data guidance is required before any USA demo links");
+  "Visible fictional-data guidance is required");
 assert.match(html, /Do not enter personal, customer, financial, or confidential information/,
   "Preview must warn reviewers against entering real information");
-for (const [, anchor, visibleText] of demoAnchors) {
-  // WCAG 2.5.3: the accessible name must begin with the text users see,
-  // allowing voice-control users to activate the same demo link.
-  const visibleLabel = visibleText.replace(/\s*↗\s*$/u, '').trim();
-  const accessibleLabel = anchor.match(/aria-label="([^"]+)"/)?.[1] ?? '';
-  assert.ok(visibleLabel && accessibleLabel.startsWith(visibleLabel),
-    "Demo link accessible name must include its visible label: " + visibleLabel);
-  assert.match(anchor, /aria-describedby="usa-demo-data-note(?: nexoffices-preview-note)?"/,
-    "Each demo link must expose the fictional-data warning to assistive technology");
-  assert.match(anchor, /target="_blank"/, "Staging demos must open in a separate tab");
-  assert.match(anchor, /aria-label="[^"]+new tab"/, "Staging demos need a descriptive new-tab label");
-  const rel = anchor.match(/rel="([^"]+)"/)?.[1].split(/\s+/) ?? [];
-  for (const token of ["noopener", "noreferrer", "nofollow"]) {
-    assert.ok(rel.includes(token), "Missing safe external-link rel: " + token);
-  }
-}
-assert.ok(html.includes('Explore NexOffices USA demo'), 'NexOffices must link only to the independent US-only static staging host');
 for (const name of ["MODO", "SmartBots", "DocWallet", "F-Insight", "NexOffices"]) {
   assert.ok(html.includes(name), "Missing selected US preview: " + name);
 }
@@ -86,27 +75,14 @@ for (const [feature, pattern] of forbiddenPreviewFeatures) {
   assert.ok(!pattern.test(html), "USA institutional preview must not contain " + feature);
 }
 
-const approvedDemoLinks = [
-  "https://deploy-preview-163--modo1.netlify.app/us/demo",
-  "https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo",
-  "https://deploy-preview-12--docwallet.netlify.app/us/workspace",
-  "https://deploy-preview-26--f-insight.netlify.app/us",
-  "https://nexoffices-usa-staging.onrender.com/us/",
-];
-const approvedExternalLinks = new Set(approvedDemoLinks);
-assert.ok(!/<link\b[^>]*\brel=["\'](?:preconnect|dns-prefetch|stylesheet)["\']/i.test(html),
+assert.ok(!/<link\b[^>]*\brel=["'](?:preconnect|dns-prefetch|stylesheet)["']/i.test(html),
   "USA institutional preview must not preload or fetch remote stylesheets");
-assert.ok(!/@import\s+(?:url\s*\()?\s*["\']?https?:/i.test(html),
+assert.ok(!/@import\s+(?:url\s*\()?\s*["']?https?:/i.test(html),
   "USA institutional preview must not import remote CSS");
-const absoluteLinks = [...html.matchAll(/href=["'](https?:\/\/[^"']+)["']/gi)].map(match => match[1].replace(/&amp;/g, '&'));
-for (const link of absoluteLinks) {
-  assert.ok(approvedExternalLinks.has(link), "Unexpected external link on USA preview: " + link);
-}
-for (const demo of approvedDemoLinks) {
-  assert.ok(absoluteLinks.includes(demo), "Missing US staging walkthrough: " + demo);
-}
-assert.ok(!/(https?:\/\/)?(?:trymodo|trydocwallet|f-insight\.org|nexoffices\.com\.br)/i.test(absoluteLinks.join(' ')), "Brazilian production app links are forbidden");
-
+const absoluteLinks = [...html.matchAll(/href=["'](https?:\/\/[^"']+)["']/gi)];
+assert.equal(absoluteLinks.length, 0, "No external demo links before independent deploy and security review");
+assert.ok(!/deploy-preview-163--modo1|deploy-preview-12--docwallet|deploy-preview-26--f-insight|nexoffices-usa-staging/i.test(html),
+  "Institutional page must not advertise legacy staging hosts");
 assert.match(brazil, /<html lang="pt-BR">/, "Brazil locale must remain intact");
 assert.ok(netlify.includes('publish = "site"'), "Existing publishing root must remain unchanged");
 console.log("PASS: Alternative Ventures USA static preview, BR separation and no-US-commerce guard");
