@@ -99,38 +99,20 @@ try {
 
     const names = await page.locator('article.card h3').allInnerTexts();
     assert.deepEqual(names, ['MODO', 'SmartBots', 'DocWallet', 'F-Insight', 'NexOffices']);
-    const demos = await page.locator('a.product-demo-link').evaluateAll(links =>
-      links.map(element => ({ url: element.getAttribute('href'), target: element.getAttribute('target'), rel: element.getAttribute('rel') }))
-    );
-    assert.equal(demos.length, 5);
-    // WCAG 2.5.3 (Label in Name): voice-control users must be able to
-    // speak the visible action to activate the corresponding preview.
-    const demoLabels = await page.locator('a.product-demo-link').evaluateAll(links =>
-      links.map(link => ({
-        visible: (link.textContent || '').replace(/\s*↗\s*$/u, '').trim(),
-        accessible: (link.getAttribute('aria-label') || '').trim(),
-      })));
-    for (const label of demoLabels) {
-      assert.ok(label.visible && label.accessible.startsWith(label.visible),
-        'Demo accessible name does not start with visible label: ' + label.visible);
-      assert.match(label.accessible, /opens in a new tab$/i,
-        'Demo link must announce that it opens a new tab');
+    // Do not make legacy or unverified staging environments clickable from
+    // the institutional USA portfolio, even when their own CI is green.
+    const pendingDemos = page.locator('p.product-demo-pending');
+    assert.equal(await pendingDemos.count(), 5, 'Five product previews must be visibly gated');
+    assert.equal(await page.locator('a[href^="https://"], a.product-demo-link').count(), 0,
+      'Unverified external demo navigation must remain absent');
+    for (const notice of await pendingDemos.all()) {
+      assert.ok(await notice.isVisible(), 'Pending-deploy disclosure must be visible');
+      assert.match(await notice.innerText(), /pending independent deploy verification/i);
     }
-    const sampleDataNotice = page.locator("#usa-demo-data-note");
-    assert.equal(await sampleDataNotice.count(), 1, "USA demo data warning must have one unique target");
-    assert.ok(await sampleDataNotice.isVisible(), "Fictional-data warning must be visible");
+    const sampleDataNotice = page.locator('#usa-demo-data-note');
+    assert.equal(await sampleDataNotice.count(), 1, 'Fictional-data warning must have one unique target');
+    assert.ok(await sampleDataNotice.isVisible(), 'Fictional-data warning must be visible');
     assert.match(await sampleDataNotice.innerText(), /Do not enter personal, customer, financial, or confidential information/i);
-    for (const link of await page.locator("a.product-demo-link").all()) {
-      const description = (await link.getAttribute("aria-describedby") || "").split(/\s+/);
-      assert.ok(description.includes("usa-demo-data-note"), "Demo link must reference the fictional-data warning");
-    }
-    // WCAG-friendly touch targets: all five demo links must be at least 44px
-    // tall and wide across narrow mobile and desktop viewports.
-    for (const link of await page.locator('a.product-demo-link').all()) {
-      const box = await link.boundingBox();
-      assert.ok(box && box.height >= 44 && box.width >= 44,
-        `Demo link touch target too small at ${width}px: ${JSON.stringify(box)}`);
-    }
     // Primary header navigation is interactive on every viewport, not just the
     // five demo cards. Enforce generous touch targets for the logo and menu.
     for (const link of await page.locator('header a').all()) {
@@ -138,30 +120,11 @@ try {
       assert.ok(box && box.height >= 44 && box.width >= 44,
         `Header navigation target too small at ${width}px: ${await link.getAttribute('href')} ${JSON.stringify(box)}`);
     }
-    const expected = [
-      'https://deploy-preview-163--modo1.netlify.app/us/demo',
-      'https://deploy-preview-163--modo1.netlify.app/us/smartbots/demo',
-      'https://deploy-preview-12--docwallet.netlify.app/us/workspace',
-      'https://deploy-preview-26--f-insight.netlify.app/us',
-      'https://nexoffices-usa-staging.onrender.com/us/',
-    ];
-    assert.deepEqual(demos.map(link => link.url), expected);
-    for (const link of demos) {
-      assert.equal(link.target, '_blank');
-      assert.match(link.rel, /noopener/);
-      assert.match(link.rel, /noreferrer/);
-      assert.match(link.rel, /nofollow/);
-    }
-    assert.ok(await page.getByRole('link', {name:/Explore NexOffices USA demo/}).isVisible());
-    // Do not let a green preview status imply that the NexOffices Render staging
-    // deploy matches the current PR. Expose the caveat visually and to AT.
-    const nexOfficesLink = page.getByRole('link', { name: /Explore NexOffices USA demo/ });
-    assert.equal(await nexOfficesLink.getAttribute('aria-describedby'), 'usa-demo-data-note nexoffices-preview-note');
     const stagingCaveat = page.locator('#nexoffices-preview-note');
-    assert.equal(await stagingCaveat.count(), 1, 'NexOffices staging caveat must have a unique id');
+    assert.equal(await stagingCaveat.count(), 1, 'NexOffices provenance caveat must have a unique id');
     assert.ok(await stagingCaveat.isVisible(), 'NexOffices provenance caveat must be visible');
-    assert.match(await stagingCaveat.innerText(), /published build may differ from the current review branch/i);
-    assert.match(await stagingCaveat.innerText(), /not approved for production use/i);
+    assert.match(await stagingCaveat.innerText(), /dedicated USA preview not yet deployed/i);
+    assert.match(await stagingCaveat.innerText(), /not approved or linked/i);
     // Text-only zoom is a critical narrow-screen accessibility regression check.
     // Do not assert font metrics: enforce usable navigation and zero horizontal scroll.
     if (width === 320) {
@@ -192,7 +155,7 @@ try {
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.getByRole('heading', { name: /Build what matters/i }).waitFor();
       assert.equal(await page.locator('html').getAttribute('lang'), 'en-US');
-      assert.equal(await page.locator('a.product-demo-link').count(), 5);
+      assert.equal(await page.locator('p.product-demo-pending').count(), 5);
       // Verify real in-page navigation after refresh, not just static href attributes.
       await page.getByRole('link', { name: 'Products', exact: true }).click();
       assert.equal(new URL(page.url()).hash, '#products', 'Products navigation must reach its section');
