@@ -135,9 +135,9 @@ export function assessResponse({ path, allowed, status, headers, body, redirecte
     // An inert-looking 404 can still execute JavaScript through a body
     // onload handler (without any <script> tag), or use inline styles to
     // fetch third-party resources. Do not accept those as static denials.
-    if (/\\bon[a-z]+\\s*=/i.test(deniedBody))
+    if (/\bon[a-z]+\s*=/i.test(deniedBody))
       errors.push('blocked-route-inline-event-handler');
-    if (/\\b(?:style|srcdoc)\\s*=/i.test(deniedBody) || /javascript\\s*:/i.test(deniedBody))
+    if (/\b(?:style|srcdoc)\s*=/i.test(deniedBody) || /javascript\s*:/i.test(deniedBody))
       errors.push('blocked-route-active-attribute');
     // Refresh response headers can navigate even when the HTTP status is 404.
     if (String(headers?.refresh || '').trim())
